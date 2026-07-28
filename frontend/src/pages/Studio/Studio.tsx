@@ -57,6 +57,20 @@ stageData["prompt-builder"] = { id:"prompt-builder",num:"",name:"Prompt Builder"
   title:"Prompt Builder",inspector:"Prompt 配置",tag:"PB",heading:"6 组件 · 6,102 tok",
   copy:"Role+Rules+History+Memory+Context+Q+Format",score:"6,102 tok" };
 
+// Retrieval sub-item stage data
+stageData["vector-child"] = { id:"vector-child",num:"",name:"Vector Recall",desc:"20 chunks · 121ms",time:"121ms",
+  title:"Vector Recall",inspector:"向量配置",tag:"VEC",heading:"bge-m3 / idx-024",
+  copy:"Cosine 相似度检索，Top 20 chunks，3 条改写 Query 各自检索。最高分 0.875，最低 0.720。",score:"0.942" };
+stageData["bm25"] = { id:"bm25",num:"",name:"BM25 Recall",desc:"20 chunks · 69ms",time:"69ms",
+  title:"BM25 Recall",inspector:"BM25 配置",tag:"BM25",heading:"关键词命中 · 最高 21.78",
+  copy:"关键词 Hofmeister、lysozyme、charge screening 在标题和摘要中高频命中。Analyzer: biomed_zh_en。",score:"18.42" };
+stageData["sql"] = { id:"sql",num:"",name:"SQL Recall",desc:"4 records · 74ms",time:"74ms",
+  title:"SQL Recall",inspector:"SQL 配置",tag:"SQL",heading:"phase_transition_records",
+  copy:"SELECT * FROM phase_transition_records WHERE protein='lysozyme' AND phenomenon='LLPS'。命中 4 条实验记录。",score:"4 rows" };
+stageData["graph"] = { id:"graph",num:"",name:"Graph / API Recall",desc:"2 entities · 62ms",time:"62ms",
+  title:"Graph / API Recall",inspector:"Graph 配置",tag:"GPH",heading:"知识图谱实体查询",
+  copy:"查询 lysozyme → LLPS → Hofmeister series 关系链，返回 2 个实体节点及其属性。",score:"2 entities" };
+
 const RETRIEVAL_CHILDREN = [
   { id: "vector-child", name: "Vector", desc: "20 chunks · 121ms" },
   { id: "bm25", name: "BM25", desc: "20 chunks · 69ms" },
@@ -358,18 +372,61 @@ export default function Studio() {
                     ))}
                   </Box>
                 </Box>
+              ) : (selected === "retrieval" || selected === "vector-child") ? (
+                <Box>
+                  {[["Embedding","bge-m3 / 1024d"],["Top-K","20"],["相似度阈值","0.72"],["最高 Cosine","0.875"],["最低 Cosine","0.720"]].map((r,i)=>(
+                    <Box key={i} sx={{ display:"flex",justifyContent:"space-between",py:0.8,borderBottom:"1px solid",borderColor:"divider" }}>
+                      <Typography variant="caption" color="text.secondary">{r[0]}</Typography>
+                      <Typography variant="caption" fontWeight={600} fontFamily="monospace">{r[1]}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              ) : (selected === "bm25") ? (
+                <Box>
+                  {[["Analyzer","biomed_zh_en"],["Top-K","20"],["最高 BM25","21.78"],["命中关键词","Hofmeister,lysozyme,charge"],["耗时","69ms"]].map((r,i)=>(
+                    <Box key={i} sx={{ display:"flex",justifyContent:"space-between",py:0.8,borderBottom:"1px solid",borderColor:"divider" }}>
+                      <Typography variant="caption" color="text.secondary">{r[0]}</Typography>
+                      <Typography variant="caption" fontWeight={600} fontFamily="monospace">{r[1]}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              ) : (selected === "sql") ? (
+                <Box>
+                  <Box sx={{ p:1.5,bgcolor:"#1e1e1e",borderRadius:2,mb:1.5,fontFamily:"monospace",fontSize:10,color:"#e8eaed",lineHeight:1.8 }}>
+                    SELECT salt_type, concentration,<br/>transition_temp, source_id<br/>
+                    FROM phase_transition_records<br/>
+                    WHERE protein = <span style={{color:"#64b5f6"}}>'lysozyme'</span><br/>
+                    &nbsp;&nbsp;AND phenomenon = <span style={{color:"#64b5f6"}}>'LLPS'</span><br/>
+                    ORDER BY concentration ASC<br/>LIMIT 20;
+                  </Box>
+                  {[["耗时","74ms"],["命中行数","4 records"],["数据源","phase_prod.transition_records"],["索引命中","idx_protein_phenomenon"]].map((r,i)=>(
+                    <Box key={i} sx={{ display:"flex",justifyContent:"space-between",py:0.8,borderBottom:"1px solid",borderColor:"divider" }}>
+                      <Typography variant="caption" color="text.secondary">{r[0]}</Typography>
+                      <Typography variant="caption" fontWeight={600} fontFamily="monospace">{r[1]}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              ) : (selected === "graph") ? (
+                <Box>
+                  {[["查询类型","知识图谱实体"],["实体","lysozyme → LLPS → Hofmeister"],["返回节点","2 entities"],["关系边","3 edges"],["耗时","62ms"]].map((r,i)=>(
+                    <Box key={i} sx={{ display:"flex",justifyContent:"space-between",py:0.8,borderBottom:"1px solid",borderColor:"divider" }}>
+                      <Typography variant="caption" color="text.secondary">{r[0]}</Typography>
+                      <Typography variant="caption" fontWeight={600} fontFamily="monospace">{r[1]}</Typography>
+                    </Box>
+                  ))}
+                </Box>
               ) : (
                 <Box>
                   {[["Top-K","20"],["相似度阈值","0.72"],["召回模型","bge-m3"]].map((r,i)=>(
-                    <Box key={i} sx={{ display: "flex", justifyContent: "space-between", py: 0.8, borderBottom: "1px solid", borderColor: "divider" }}>
+                    <Box key={i} sx={{ display:"flex",justifyContent:"space-between",py:0.8,borderBottom:"1px solid",borderColor:"divider" }}>
                       <Typography variant="caption" color="text.secondary">{r[0]}</Typography>
                       <Typography variant="caption" fontWeight={600} fontFamily="monospace">{r[1]}</Typography>
                     </Box>
                   ))}
                   {[["Vector 权重","0.55"],["BM25 权重","0.30"],["SQL 权重","0.15"]].map((r,i)=>(
-                    <Box key={i} sx={{ display: "flex", justifyContent: "space-between", py: 0.8 }}>
+                    <Box key={i} sx={{ display:"flex",justifyContent:"space-between",py:0.8 }}>
                       <Typography variant="caption" color="text.secondary">{r[0]}</Typography>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Box sx={{ display:"flex",alignItems:"center",gap:1 }}>
                         <Typography variant="caption" fontWeight={600} fontFamily="monospace">{r[1]}</Typography>
                         <Switch size="small" defaultChecked />
                       </Box>
