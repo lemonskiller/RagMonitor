@@ -17,11 +17,16 @@ const DG: Record<string,{ icon:typeof ShieldCheck; title:string; copy:string; co
   error:{icon:OctagonX,title:"SQL 精查 Endpoint 返回 504",copy:"SQL exact 在 500ms 超时后终止。",conf:"0.99",color:"error.main"},
 };
 const SPANS = [
-  { n:"Query validate",p:0.4,c:"primary.main",t:"6ms" },{ n:"Query rewrite",p:4.5,c:"primary.main",t:"82ms" },
-  { n:"Retrieval",p:8.1,c:"#00897b",t:"148ms" },{ n:"  Vector",p:6.6,c:"#00897b",t:"121ms",in:true },
-  { n:"  BM25",p:3.8,c:"#00897b",t:"69ms",in:true },{ n:"  SQL",p:4.1,c:"#00897b",t:"74ms",in:true },
-  { n:"Fusion",p:0.7,c:"#00897b",t:"12ms" },{ n:"Rerank",p:11.8,c:"warning.main",t:"214ms" },
-  { n:"Context",p:0.3,c:"warning.main",t:"4ms" },{ n:"LLM",p:73.7,c:"#e91e63",t:"1.35s" },
+  { n:"Query validate",left:0,w:0.4,c:"primary.main",t:"6ms" },
+  { n:"Query rewrite",left:0.4,w:4.5,c:"primary.main",t:"82ms" },
+  { n:"Retrieval parallel",left:4.9,w:8.1,c:"#00897b",t:"148ms",dim:true },
+  { n:"  Vector search",left:5.1,w:6.6,c:"#00897b",t:"121ms",in:true },
+  { n:"  BM25",left:5.1,w:3.8,c:"#00897b",t:"69ms",in:true },
+  { n:"  SQL exact",left:5.2,w:4.1,c:"#00897b",t:"74ms",in:true },
+  { n:"Fusion + dedup",left:13,w:0.7,c:"#00897b",t:"12ms" },
+  { n:"Rerank",left:13.7,w:11.8,c:"warning.main",t:"214ms" },
+  { n:"Context assembly",left:25.5,w:0.3,c:"warning.main",t:"4ms" },
+  { n:"LLM generate",left:26.3,w:73.7,c:"#e91e63",t:"1.35s" },
 ];
 
 export default function Traces() {
@@ -53,9 +58,13 @@ export default function Traces() {
           <d.icon size={20} color={d.color}/><Box><Typography variant="body2" fontWeight={600}>{d.title}</Typography><Typography variant="caption" color="text.secondary">{d.copy}</Typography></Box>
           <Box sx={{ml:"auto",textAlign:"right"}}><Typography variant="caption" color="text.secondary">置信度</Typography><Typography variant="body2" fontWeight={700} fontFamily="monospace">{d.conf}</Typography></Box></Box>
         <Typography variant="subtitle2" fontWeight={600} mb={1}>Span 瀑布 · {SPANS.length} spans</Typography>
+        <Box sx={{display:"flex",justifyContent:"space-between",mb:0.5,fontSize:9,color:"text.secondary",fontFamily:"monospace"}}>
+          <span>0</span><span>455ms</span><span>910ms</span><span>1.37s</span><span>1.82s</span></Box>
         {SPANS.map((s,i)=>(<Box key={i} sx={{display:"flex",alignItems:"center",gap:1,mb:0.5}}>
           <Typography variant="caption" sx={{width:120,fontSize:10,pl:s.in?2:0,color:s.in?"text.secondary":"text.primary"}}>{s.n}</Typography>
-          <Box sx={{flex:1,height:8,bgcolor:"grey.100",borderRadius:1,overflow:"hidden"}}><Box sx={{height:"100%",width:`${s.p}%`,bgcolor:s.c,borderRadius:1}}/></Box>
+          <Box sx={{flex:1,height:9,bgcolor:"grey.100",borderRadius:0.5,position:"relative",overflow:"hidden"}}>
+            <Box sx={{position:"absolute",left:`${s.left}%`,height:"100%",width:`${s.w}%`,bgcolor:s.c,borderRadius:0.5,opacity:s.dim?0.35:1}}/>
+          </Box>
           <Typography variant="caption" fontFamily="monospace" fontSize={10} sx={{width:50,textAlign:"right"}}>{s.t}</Typography></Box>))}
         <Box sx={{display:"flex",gap:0,mt:2,borderBottom:"1px solid",borderColor:"divider"}}>{["链路分析","完整内容","检索算分","Prompt/回答","元数据"].map((t,i)=>(<Button key={i} size="small" color={i===0?"primary":"inherit"} sx={{borderRadius:0,borderBottom:i===0?"2px solid":"2px solid transparent",borderBottomColor:i===0?"primary.main":"transparent"}}>{t}</Button>))}</Box>
       </CardContent></Card></Grid></Grid>
