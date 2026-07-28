@@ -1,0 +1,85 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: rag-monitor
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ragmonitor
+    username: ragmonitor
+    password: ragmonitor123
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 4
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: ragmonitor
+    password: ragmonitor123
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 30m
+      cache-null-values: false
+
+  ai:
+    milvus:
+      host: localhost
+      port: 19530
+      database: default
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: rag-monitor
+
+logging:
+  level:
+    com.ragmonitor: DEBUG
+    org.springframework.ai: INFO
+  pattern:
+    console: "%d{HH:mm:ss} %-5level %logger{36} - %msg%n"
+
+app:
+  milvus:
+    collection-prefix: ragmonitor_
+  memory:
+    short-term-ttl: 30m
+    long-term-index: idx-mem-003
+    max-short-term-tokens: 4096
+  studio:
+    default-top-k: 20
+    default-threshold: 0.72

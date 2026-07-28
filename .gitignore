@@ -1,1 +1,32 @@
+# Data files
 *.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.*.json
+
+# Dependencies
+frontend/node_modules/
+backend/target/
+
+# Build output
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+
+# Logs
+*.log
+
+# Docker volumes
+docker/volumes/
