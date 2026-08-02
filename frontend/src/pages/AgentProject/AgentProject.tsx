@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Divider,
   Grid,
   InputAdornment,
@@ -46,7 +47,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-type ViewId = "overview" | "files" | "resources" | "skills" | "runtime" | "prompts";
+type ViewId = "overview" | "files" | "resources" | "skills" | "databases" | "runtime" | "prompts";
 
 type PhaseFile = {
   name: string;
@@ -151,7 +152,8 @@ const VIEW_TABS: Array<{ id: ViewId; label: string; icon: typeof Network }> = [
   { id: "overview", label: "真实概览", icon: Network },
   { id: "files", label: "交接文件", icon: FileText },
   { id: "resources", label: "资源包", icon: Database },
-  { id: "skills", label: "Skills / SDB", icon: Boxes },
+  { id: "skills", label: "Skills", icon: Boxes },
+  { id: "databases", label: "数据库", icon: Database },
   { id: "runtime", label: "Runtime", icon: Container },
   { id: "prompts", label: "README / Env", icon: FileCode2 },
 ];
@@ -289,7 +291,7 @@ function Resources({ project }: { project: PhaseAgentProject }) {
   );
 }
 
-function SkillsAndSdb({ project }: { project: PhaseAgentProject }) {
+function SkillsView({ project }: { project: PhaseAgentProject }) {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("all");
   const [selectedId, setSelectedId] = useState(project.skillEntries[0]?.id || "");
@@ -411,66 +413,168 @@ function SkillsAndSdb({ project }: { project: PhaseAgentProject }) {
         </Grid>
       </Grid>
 
+    </Stack>
+  );
+}
+
+function DatabasesView({ project, loading, onResample }: { project: PhaseAgentProject; loading: boolean; onResample: () => void }) {
+  const ebPack = project.resourcePacks.find((pack) => pack.id === "eb");
+  const sdbPack = project.resourcePacks.find((pack) => pack.id === "sdb_v2");
+  const vectorSize = project.databases.vectorStore.compressedArchive.size !== "-"
+    ? project.databases.vectorStore.compressedArchive.size
+    : ebPack?.declaredSize || "-";
+  const sdbArchiveSize = project.databases.sdb.compressedArchive.size !== "-"
+    ? project.databases.sdb.compressedArchive.size
+    : sdbPack?.declaredSize || "-";
+  const sqliteSize = project.databases.sdb.sqliteFile.size;
+  const samples = project.databases.sdb.sampleRecords;
+
+  return (
+    <Stack spacing={2}>
+      <Card sx={PANEL_SX}>
+        <MetricGrid>
+          <Metric label="数据库资产" value="2" />
+          <Metric label="EB 向量库归档" value={vectorSize} />
+          <Metric label="SDB 归档" value={sdbArchiveSize} />
+          <Metric label="SDB SQLite 实际大小" value={sqliteSize !== "-" ? sqliteSize : "未解压"} />
+          <Metric label="SDB 记录数" value={Number(project.sdbQuality.record_count || 0).toLocaleString()} />
+        </MetricGrid>
+      </Card>
+
       <Grid container spacing={2}>
-        <Grid item xs={12} lg={5}>
+        <Grid item xs={12} lg={7}>
           <Card sx={{ ...PANEL_SX, height: "100%" }}>
-            <CardContent>
-              <Stack direction="row" spacing={1} alignItems="center" mb={1.5}>
-                <Database size={18} />
-                <Typography variant="h3">数据库类型与大小</Typography>
-              </Stack>
-              <MetricGrid>
-                <Metric label="Vector DB" value={project.databases.vectorStore.type} />
-                <Metric label="Faiss" value={project.databases.vectorStore.isFaiss ? "yes" : "no"} />
-                <Metric label="Milvus" value={project.databases.vectorStore.isMilvus ? "yes" : "no"} />
-                <Metric label="EB archive" value={project.databases.vectorStore.compressedArchive.size} />
-                <Metric label="SDB SQLite" value={project.databases.sdb.sqliteFile.size} />
-              </MetricGrid>
-              <Alert severity="info" sx={{ mt: 2, fontSize: 12 }}>{project.databases.vectorStore.engine}</Alert>
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="caption" fontWeight={800}>SDB tables</Typography>
-              <TableContainer sx={{ mt: 1 }}>
-                <Table size="small">
-                  <TableBody>
-                    {project.databases.sdb.tableCounts.map((row) => (
-                      <TableRow key={row.table}>
-                        <TableCell sx={{ ...MONO_SX, fontSize: 11 }}>{row.table}</TableCell>
-                        <TableCell align="right" sx={{ ...MONO_SX, fontSize: 11 }}>{row.rows.toLocaleString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
+            <Box sx={{ px: 2, py: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+              <Box>
+                <Typography variant="h3">数据库清单</Typography>
+                <Typography variant="caption" color="text.secondary">项目交接清单与可读取缓存中的数据库资产</Typography>
+              </Box>
+              <Chip size="small" label="2 databases" color="primary" />
+            </Box>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>{["数据库", "类型 / 引擎", "存储位置", "大小", "当前能力"].map((heading) => <TableCell key={heading} sx={{ fontSize: 10, fontWeight: 800 }}>{heading}</TableCell>)}</TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell sx={{ minWidth: 170 }}><Typography variant="body2" fontWeight={800}>Evidence Base</Typography><Typography variant="caption" color="text.secondary">EB Vector Store</Typography></TableCell>
+                    <TableCell sx={{ minWidth: 180, fontSize: 11 }}>{project.databases.vectorStore.type}</TableCell>
+                    <TableCell sx={{ ...MONO_SX, minWidth: 150, fontSize: 10 }}>/mnt/vector-db</TableCell>
+                    <TableCell sx={{ ...MONO_SX, fontSize: 11, whiteSpace: "nowrap" }}>{vectorSize}</TableCell>
+                    <TableCell><Chip size="small" label="需挂载 Runtime" variant="outlined" /></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell><Typography variant="body2" fontWeight={800}>Source DB v2</Typography><Typography variant="caption" color="text.secondary">SDB</Typography></TableCell>
+                    <TableCell sx={{ fontSize: 11 }}>{project.databases.sdb.engine}</TableCell>
+                    <TableCell sx={{ ...MONO_SX, maxWidth: 240, fontSize: 10, overflowWrap: "anywhere" }}>{project.databases.sdb.sqliteFile.path}</TableCell>
+                    <TableCell sx={{ ...MONO_SX, fontSize: 11, whiteSpace: "nowrap" }}>{sqliteSize !== "-" ? sqliteSize : sdbArchiveSize}</TableCell>
+                    <TableCell><Chip size="small" label={project.databases.sdb.sqliteFile.exists ? "可查询 / 可抽样" : "仅清单可见"} color={project.databases.sdb.sqliteFile.exists ? "success" : "default"} /></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Card>
         </Grid>
-        <Grid item xs={12} lg={7}>
-          <Card sx={PANEL_SX}>
+
+        <Grid item xs={12} lg={5}>
+          <Card sx={{ ...PANEL_SX, height: "100%" }}>
             <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid", borderColor: "divider" }}>
-              <Typography variant="h3">SDB 抽样记录</Typography>
-              <Typography variant="caption" color="text.secondary">从缓存 SQLite `records` 表随机抽样 10 条</Typography>
+              <Typography variant="h3">数据库文件与大小</Typography>
+              <Typography variant="caption" color="text.secondary">EB 清单声明文件及 SDB 解压后的 SQLite 文件</Typography>
+            </Box>
+            <TableContainer>
+              <Table size="small">
+                <TableHead><TableRow><TableCell sx={{ fontSize: 10, fontWeight: 800 }}>文件</TableCell><TableCell sx={{ fontSize: 10, fontWeight: 800 }}>所属库</TableCell><TableCell align="right" sx={{ fontSize: 10, fontWeight: 800 }}>大小</TableCell></TableRow></TableHead>
+                <TableBody>
+                  {project.databases.vectorStore.declaredFiles.map((file) => (
+                    <TableRow key={file.name}>
+                      <TableCell sx={{ ...MONO_SX, fontSize: 10 }}>{file.name}</TableCell>
+                      <TableCell><Chip size="small" label="EB" variant="outlined" /></TableCell>
+                      <TableCell align="right" sx={{ ...MONO_SX, fontSize: 10 }}>{file.size}</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow>
+                    <TableCell sx={{ ...MONO_SX, fontSize: 10 }}>source_db_index.sqlite3</TableCell>
+                    <TableCell><Chip size="small" label="SDB" variant="outlined" /></TableCell>
+                    <TableCell align="right" sx={{ ...MONO_SX, fontSize: 10 }}>{sqliteSize !== "-" ? sqliteSize : "未解压"}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <Alert severity="info" sx={{ m: 2, fontSize: 12 }}>{project.databases.vectorStore.engine}</Alert>
+          </Card>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} lg={4}>
+          <Card sx={{ ...PANEL_SX, height: "100%" }}>
+            <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid", borderColor: "divider" }}>
+              <Typography variant="h3">SDB 表数据量</Typography>
+              <Typography variant="caption" color="text.secondary">SQLite tables / views</Typography>
             </Box>
             <TableContainer sx={{ maxHeight: 420 }}>
               <Table size="small" stickyHeader>
-                <TableHead>
-                  <TableRow>{["record_id", "source", "entity", "primary_name", "gene", "organism", "evidence", "description"].map((heading) => <TableCell key={heading} sx={{ ...MONO_SX, fontSize: 10, fontWeight: 800 }}>{heading}</TableCell>)}</TableRow>
-                </TableHead>
+                <TableHead><TableRow><TableCell sx={{ fontSize: 10, fontWeight: 800 }}>表 / 视图</TableCell><TableCell align="right" sx={{ fontSize: 10, fontWeight: 800 }}>记录数</TableCell></TableRow></TableHead>
                 <TableBody>
-                  {project.databases.sdb.sampleRecords.map((row) => (
-                    <TableRow key={String(row.record_id)}>
-                      <TableCell sx={{ ...MONO_SX, fontSize: 10, maxWidth: 180, overflowWrap: "anywhere" }}>{String(row.record_id || "")}</TableCell>
-                      <TableCell sx={{ fontSize: 11 }}>{String(row.source_database || "")}</TableCell>
-                      <TableCell sx={{ fontSize: 11 }}>{String(row.entity_type || "")}</TableCell>
-                      <TableCell sx={{ fontSize: 11 }}>{String(row.primary_name || "")}</TableCell>
-                      <TableCell sx={{ fontSize: 11 }}>{String(row.gene_name || "")}</TableCell>
-                      <TableCell sx={{ fontSize: 11 }}>{String(row.organism || "")}</TableCell>
-                      <TableCell sx={{ fontSize: 11 }}>{String(row.evidence_class || "")}</TableCell>
-                      <TableCell sx={{ fontSize: 11, minWidth: 260 }}>{String(row.description || "")}</TableCell>
+                  {project.databases.sdb.tableCounts.map((row) => (
+                    <TableRow key={row.table}>
+                      <TableCell sx={{ ...MONO_SX, fontSize: 11 }}>{row.table}</TableCell>
+                      <TableCell align="right" sx={{ ...MONO_SX, fontSize: 11 }}>{row.rows.toLocaleString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </TableContainer>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} lg={8}>
+          <Card sx={PANEL_SX}>
+            <Box sx={{ px: 2, py: 1.5, display: "flex", flexDirection: { xs: "column", sm: "row" }, alignItems: { xs: "stretch", sm: "center" }, justifyContent: "space-between", gap: 1.5, borderBottom: "1px solid", borderColor: "divider" }}>
+              <Box>
+                <Typography variant="h3">抽样数据内容</Typography>
+                <Typography variant="caption" color="text.secondary">从 SDB SQLite 的 `records` 表只读随机抽样 10 条</Typography>
+              </Box>
+              <Stack direction="row" spacing={1}>
+                <Select size="small" defaultValue="sdb" inputProps={{ "aria-label": "抽样数据库" }} sx={{ minWidth: 170 }}>
+                  <MenuItem value="sdb">Source DB v2</MenuItem>
+                  <MenuItem value="vector" disabled>EB Vector（需挂载）</MenuItem>
+                </Select>
+                <Button variant="outlined" size="small" disabled={loading} startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <RefreshCw size={14} />} onClick={onResample}>
+                  {loading ? "抽样中" : "重新抽样"}
+                </Button>
+              </Stack>
+            </Box>
+            {samples.length > 0 ? (
+              <TableContainer sx={{ maxHeight: 460 }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>{["record_id", "source", "entity", "primary_name", "gene", "organism", "evidence", "description"].map((heading) => <TableCell key={heading} sx={{ ...MONO_SX, fontSize: 10, fontWeight: 800 }}>{heading}</TableCell>)}</TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {samples.map((row) => (
+                      <TableRow key={String(row.record_id)} hover>
+                        <TableCell sx={{ ...MONO_SX, fontSize: 10, maxWidth: 180, overflowWrap: "anywhere" }}>{String(row.record_id || "")}</TableCell>
+                        <TableCell sx={{ fontSize: 11 }}>{String(row.source_database || "")}</TableCell>
+                        <TableCell sx={{ fontSize: 11 }}>{String(row.entity_type || "")}</TableCell>
+                        <TableCell sx={{ fontSize: 11 }}>{String(row.primary_name || "")}</TableCell>
+                        <TableCell sx={{ fontSize: 11 }}>{String(row.gene_name || "")}</TableCell>
+                        <TableCell sx={{ fontSize: 11 }}>{String(row.organism || "")}</TableCell>
+                        <TableCell sx={{ fontSize: 11 }}>{String(row.evidence_class || "")}</TableCell>
+                        <TableCell sx={{ fontSize: 11, minWidth: 280, lineHeight: 1.55 }}>{String(row.description || "")}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Box sx={{ px: 2, py: 5, textAlign: "center" }}>
+                <Typography variant="body2" fontWeight={700}>当前没有可抽样记录</Typography>
+                <Typography variant="caption" color="text.secondary">确认 SDB SQLite 已解压并配置到服务端路径</Typography>
+              </Box>
+            )}
           </Card>
         </Grid>
       </Grid>
@@ -555,6 +659,49 @@ function Prompts({ project }: { project: PhaseAgentProject }) {
   );
 }
 
+function ProjectLoadingState({ refreshing }: { refreshing: boolean }) {
+  if (refreshing) {
+    return (
+      <Card role="status" aria-live="polite" sx={{ ...PANEL_SX, mb: 2, position: "relative", borderColor: "primary.light" }}>
+        <LinearProgress sx={{ position: "absolute", inset: "0 0 auto", height: 3 }} />
+        <CardContent sx={{ py: 1.5, display: "flex", alignItems: "center", gap: 1.5, "&:last-child": { pb: 1.5 } }}>
+          <CircularProgress size={22} thickness={4.5} />
+          <Box>
+            <Typography variant="body2" fontWeight={800}>正在重新扫描 PhaseAgent</Typography>
+            <Typography variant="caption" color="text.secondary">已有数据仍可查看，扫描完成后会自动更新</Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card role="status" aria-live="polite" sx={{ ...PANEL_SX, position: "relative" }}>
+      <LinearProgress sx={{ position: "absolute", inset: "0 0 auto", height: 3 }} />
+      <CardContent sx={{ p: { xs: 2, sm: 3 }, "&:last-child": { pb: { xs: 2, sm: 3 } } }}>
+        <Stack direction="row" alignItems="center" spacing={1.75} mb={3}>
+          <Box sx={{ width: 44, height: 44, flex: "0 0 44px", display: "grid", placeItems: "center", border: "1px solid", borderColor: "primary.light", borderRadius: 1.5, bgcolor: "action.hover" }}>
+            <CircularProgress size={24} thickness={4.5} />
+          </Box>
+          <Box minWidth={0}>
+            <Typography variant="h3">正在读取 PhaseAgent 项目</Typography>
+            <Typography variant="caption" color="text.secondary">扫描 manifest、资源包、Skills、数据库与 Runtime，请稍候</Typography>
+          </Box>
+        </Stack>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 1.5 }}>
+          {[0, 1, 2].map((item) => (
+            <Box key={item} sx={{ p: 2, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
+              <Skeleton variant="text" animation="wave" width="42%" height={18} />
+              <Skeleton variant="text" animation="wave" width="74%" height={30} />
+              <Skeleton variant="rounded" animation="wave" height={56} sx={{ mt: 1 }} />
+            </Box>
+          ))}
+        </Box>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AgentProject() {
   const [activeView, setActiveView] = useState<ViewId>("overview");
   const [project, setProject] = useState<PhaseAgentProject | null>(null);
@@ -562,7 +709,7 @@ export default function AgentProject() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  const loadProject = async () => {
+  const loadProject = async (announce = true) => {
     setLoading(true);
     setError("");
     try {
@@ -570,7 +717,7 @@ export default function AgentProject() {
       if (!response.ok) throw new Error(`API ${response.status}`);
       const data = (await response.json()) as PhaseAgentProject;
       setProject(data);
-      setMessage("已重新扫描 PhaseAgent 交接目录");
+      if (announce) setMessage("已重新扫描 PhaseAgent 交接目录");
     } catch (exc) {
       setError(exc instanceof Error ? exc.message : "读取 PhaseAgent 项目失败");
     } finally {
@@ -579,7 +726,7 @@ export default function AgentProject() {
   };
 
   useEffect(() => {
-    void loadProject();
+    void loadProject(false);
   }, []);
 
   const page = useMemo(() => {
@@ -587,25 +734,28 @@ export default function AgentProject() {
     if (activeView === "overview") return <Overview project={project} />;
     if (activeView === "files") return <Card sx={PANEL_SX}><FileTable files={project.mainFiles} /></Card>;
     if (activeView === "resources") return <Resources project={project} />;
-    if (activeView === "skills") return <SkillsAndSdb project={project} />;
+    if (activeView === "skills") return <SkillsView project={project} />;
+    if (activeView === "databases") return <DatabasesView project={project} loading={loading} onResample={() => void loadProject()} />;
     if (activeView === "runtime") return <Runtime project={project} />;
     return <Prompts project={project} />;
-  }, [activeView, project]);
+  }, [activeView, loading, project]);
 
   return (
-    <Box sx={{ minWidth: 0 }}>
+    <Box aria-busy={loading} sx={{ minWidth: 0 }}>
       <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", sm: "flex-start" }, gap: 2, mb: 2.5 }}>
         <Box>
           <Typography variant="h1">PhaseAgent 项目</Typography>
           <Typography variant="body2" color="text.secondary">从真实 handoff 目录实时读取 manifest、资源包、Skills、SDB 与 Runtime 信息</Typography>
         </Box>
         <Stack direction="row" spacing={1}>
-          <Button fullWidth variant="outlined" size="small" startIcon={<Download size={14} />} onClick={() => setMessage("当前视图来自实时 API，可直接保存页面快照")}>导出快照</Button>
-          <Button fullWidth variant="contained" size="small" startIcon={<RefreshCw size={14} />} onClick={() => void loadProject()}>重新扫描</Button>
+          <Button fullWidth variant="outlined" size="small" disabled={!project || loading} startIcon={<Download size={14} />} onClick={() => setMessage("当前视图来自实时 API，可直接保存页面快照")}>导出快照</Button>
+          <Button fullWidth variant="contained" size="small" disabled={loading} startIcon={loading ? <CircularProgress size={14} color="inherit" /> : <RefreshCw size={14} />} onClick={() => void loadProject()}>
+            {loading ? "扫描中" : "重新扫描"}
+          </Button>
         </Stack>
       </Box>
 
-      {loading && <Card sx={PANEL_SX}><CardContent><Skeleton height={42} /><Skeleton height={220} /></CardContent></Card>}
+      {loading && <ProjectLoadingState refreshing={Boolean(project)} />}
       {error && <Alert severity="error" sx={{ mb: 2 }}>PhaseAgent API 读取失败：{error}</Alert>}
 
       {project && (
