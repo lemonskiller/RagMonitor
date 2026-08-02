@@ -432,9 +432,10 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    host = os.environ.get("RAGMONITOR_HOST", "0.0.0.0")
     port = int(os.environ.get("RAGMONITOR_PORT", "8788"))
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"RagMonitor serving {ROOT} on http://127.0.0.1:{port}")
+    server = ThreadingHTTPServer((host, port), Handler)
+    print(f"RagMonitor serving {ROOT} on http://{host}:{port}")
     print(f"PhaseAgent root: {PHASEAGENT_ROOT}")
     server.serve_forever()
 
