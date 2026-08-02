@@ -12,6 +12,7 @@ import {
   IconButton,
   InputAdornment,
   LinearProgress,
+  MenuItem,
   Select,
   Snackbar,
   Stack,
@@ -76,13 +77,6 @@ const PANEL_SX = {
 
 const MONO_SX = {
   fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-};
-
-const WHITE_SELECT_SX = {
-  bgcolor: "background.paper",
-  "& .MuiNativeSelect-select": { bgcolor: "background.paper" },
-  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "primary.light" },
-  "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "primary.main" },
 };
 
 const VIEW_TABS: Array<{ id: ViewId; label: string; icon: LucideIcon; badge?: string }> = [
@@ -645,25 +639,25 @@ function VectorDbView({ onMessage }: { onMessage: (message: string) => void }) {
               <Stack spacing={2}>
                 <Box>
                   <Typography variant="caption" color="text.secondary" display="block" mb={0.75}>抽样方式</Typography>
-                  <Select native fullWidth size="small" value={sampleMode} onChange={(event) => setSampleMode(event.target.value)} inputProps={{ "aria-label": "抽样方式" }} sx={WHITE_SELECT_SX}>
-                    <option value="random">随机记录</option>
-                    <option value="recent">最近写入</option>
-                    <option value="source-balanced">按来源均衡</option>
+                  <Select fullWidth size="small" value={sampleMode} onChange={(event) => setSampleMode(event.target.value)} inputProps={{ "aria-label": "抽样方式" }}>
+                    <MenuItem value="random">随机记录</MenuItem>
+                    <MenuItem value="recent">最近写入</MenuItem>
+                    <MenuItem value="source-balanced">按来源均衡</MenuItem>
                   </Select>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary" display="block" mb={0.75}>数据来源</Typography>
-                  <Select native fullWidth size="small" value={sampleSource} onChange={(event) => setSampleSource(event.target.value)} inputProps={{ "aria-label": "数据来源" }} sx={WHITE_SELECT_SX}>
-                    <option value="all">全部来源</option>
-                    <option value="markdown">Markdown documents</option>
-                    <option value="api-enriched">API enriched</option>
-                    <option value="sdb">SDB records</option>
+                  <Select fullWidth size="small" value={sampleSource} onChange={(event) => setSampleSource(event.target.value)} inputProps={{ "aria-label": "数据来源" }}>
+                    <MenuItem value="all">全部来源</MenuItem>
+                    <MenuItem value="markdown">Markdown documents</MenuItem>
+                    <MenuItem value="api-enriched">API enriched</MenuItem>
+                    <MenuItem value="sdb">SDB records</MenuItem>
                   </Select>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary" display="block" mb={0.75}>抽样数量</Typography>
-                  <Select native fullWidth size="small" value={sampleCount} onChange={(event) => setSampleCount(event.target.value)} inputProps={{ "aria-label": "抽样数量" }} sx={WHITE_SELECT_SX}>
-                    {["5", "10", "20", "50"].map((count) => <option key={count} value={count}>{count} 条</option>)}
+                  <Select fullWidth size="small" value={sampleCount} onChange={(event) => setSampleCount(event.target.value)} inputProps={{ "aria-label": "抽样数量" }}>
+                    {["5", "10", "20", "50"].map((count) => <MenuItem key={count} value={count}>{count} 条</MenuItem>)}
                   </Select>
                 </Box>
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, py: 0.75 }}>
