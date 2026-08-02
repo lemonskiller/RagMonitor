@@ -11,6 +11,7 @@ backend/target/
 
 # Build output
 frontend/dist/
+dist/
 *.tsbuildinfo
 
 # IDE
@@ -28,6 +29,13 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
+
+# Local runtime cache
+cache/
+
+# Python
+__pycache__/
 
 # Docker volumes
 docker/volumes/
