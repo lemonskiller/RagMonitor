@@ -1501,7 +1501,224 @@
     .memory-retrieval-card-head strong { font-size: 12px; }
     .memory-retrieval-card .toggle-row { padding: 5px 0; font-size: 12px; border: 0; }
 
-    @media (max-width: 920px) { .memory-dual { grid-template-columns: 1fr; } }
+    /* ---- PhaseAgent project explorer ---- */
+    .agent-project-sourcebar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding: 11px 14px;
+      background: #fff;
+      border: 1px solid var(--mu-divider);
+      border-radius: var(--radius);
+    }
+
+    .agent-project-path { display: inline-flex; align-items: center; gap: 7px; min-width: 0; color: var(--mu-grey-700); font-family: "JetBrains Mono", monospace; font-size: 11px; }
+    .agent-project-path strong { overflow: hidden; color: var(--mu-grey-900); text-overflow: ellipsis; white-space: nowrap; }
+
+    .agent-project-tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 0 12px;
+      background: #fff;
+      border: 1px solid var(--mu-divider);
+      border-bottom: 0;
+      border-radius: var(--radius) var(--radius) 0 0;
+      overflow-x: auto;
+    }
+
+    .agent-project-tab {
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 13px;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .agent-project-tab.active { color: var(--mu-primary); border-bottom-color: var(--mu-primary); }
+    .agent-project-panel { display: none; }
+    .agent-project-panel.active { display: block; }
+
+    .agent-project-shell {
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid var(--mu-divider);
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+
+    .agent-release-strip { display: grid; grid-template-columns: 1.1fr repeat(4, minmax(0, .7fr)); border-bottom: 1px solid var(--mu-divider); background: var(--mu-grey-50); }
+    .agent-release-strip > div { min-height: 72px; display: flex; flex-direction: column; justify-content: center; padding: 11px 14px; border-right: 1px solid var(--mu-divider); }
+    .agent-release-strip > div:last-child { border-right: 0; }
+    .agent-release-strip span { color: var(--muted); font-size: 9px; }
+    .agent-release-strip strong { display: block; margin-top: 4px; font-size: 12px; }
+    .agent-release-strip code { display: block; margin-top: 4px; color: var(--mu-grey-700); font-size: 9px; }
+
+    .agent-topology { padding: 18px; border-bottom: 1px solid var(--mu-divider); }
+    .agent-topology-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .agent-topology-head h2 { margin: 0; font-size: 13px; }
+
+    .agent-topology-map {
+      min-width: 950px;
+      display: grid;
+      grid-template-columns: 150px 44px 170px 44px minmax(430px, 1fr);
+      align-items: center;
+    }
+
+    .agent-topology-scroll { overflow-x: auto; }
+    .agent-topology-arrow { height: 1px; position: relative; background: var(--mu-grey-400); }
+    .agent-topology-arrow::after { content: ""; position: absolute; top: -3px; right: -1px; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid var(--mu-grey-500); }
+
+    .agent-topology-node { min-height: 96px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 12px; background: #fff; border: 1px solid var(--mu-grey-300); border-top: 3px solid var(--mu-primary); border-radius: 6px; }
+    .agent-topology-node.runtime { border-top-color: var(--mu-error); }
+    .agent-topology-node strong { font-size: 12px; }
+    .agent-topology-node span { color: var(--muted); font-size: 9px; line-height: 1.45; }
+    .agent-topology-node code { color: var(--mu-grey-700); font-size: 9px; }
+
+    .agent-resource-cluster { display: grid; grid-template-columns: repeat(3, minmax(130px, 1fr)); gap: 8px; padding: 10px; background: var(--mu-grey-50); border: 1px solid var(--mu-divider); border-radius: 7px; }
+    .agent-resource-cluster .agent-topology-node { min-height: 82px; border-top-width: 2px; }
+    .agent-resource-cluster .agent-topology-node:nth-child(2) { border-top-color: #00897b; }
+    .agent-resource-cluster .agent-topology-node:nth-child(3) { border-top-color: var(--mu-warning); }
+    .agent-resource-cluster .agent-topology-node:nth-child(4) { border-top-color: var(--mu-success); }
+    .agent-resource-cluster .agent-topology-node:nth-child(5) { border-top-color: var(--query); }
+
+    .agent-overview-grid { display: grid; grid-template-columns: minmax(0, 1fr) 310px; }
+    .agent-overview-section { min-width: 0; padding: 16px; border-right: 1px solid var(--mu-divider); }
+    .agent-overview-section h3, .agent-integrity h3 { margin: 0 0 10px; font-size: 12px; }
+    .agent-integrity { padding: 16px; }
+
+    .agent-manifest-tree { font-family: "JetBrains Mono", monospace; font-size: 10px; line-height: 1.8; }
+    .agent-manifest-tree .tree-root { color: var(--mu-primary); font-weight: 600; }
+    .agent-manifest-tree .tree-line { color: var(--mu-grey-700); }
+    .agent-manifest-tree .tree-meta { color: var(--muted); }
+
+    .integrity-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 39px; border-bottom: 1px solid var(--mu-divider); }
+    .integrity-row .icon { color: var(--mu-success); }
+    .integrity-row strong { font-size: 10px; }
+    .integrity-row span { color: var(--muted); font-size: 9px; }
+
+    .agent-inventory-layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); min-height: 600px; }
+    .agent-inventory-sidebar { min-width: 0; border-right: 1px solid var(--mu-divider); }
+    .agent-inventory-toolbar { display: flex; align-items: center; gap: 8px; padding: 11px; border-bottom: 1px solid var(--mu-divider); }
+    .agent-inventory-toolbar input { width: 100%; }
+
+    .agent-tree-row {
+      width: 100%;
+      min-height: 48px;
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 11px;
+      background: #fff;
+      border: 0;
+      border-bottom: 1px solid var(--mu-divider);
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .agent-tree-row:hover { background: var(--mu-grey-50); }
+    .agent-tree-row.active { background: var(--mu-primary-50); box-shadow: inset 3px 0 0 var(--mu-primary); }
+    .agent-tree-row .resource-icon { width: 27px; height: 27px; }
+    .agent-tree-row strong { display: block; font-size: 11px; }
+    .agent-tree-row small { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
+
+    .agent-inventory-detail { min-width: 0; }
+    .agent-detail-header { min-height: 55px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; background: var(--mu-grey-50); border-bottom: 1px solid var(--mu-divider); }
+    .agent-detail-header strong { display: block; font-size: 12px; }
+    .agent-detail-header span { color: var(--muted); font-size: 9px; }
+    .agent-detail-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--mu-divider); }
+    .agent-detail-summary > div { padding: 11px 13px; border-right: 1px solid var(--mu-divider); }
+    .agent-detail-summary > div:last-child { border-right: 0; }
+    .agent-detail-summary span { display: block; color: var(--muted); font-size: 9px; }
+    .agent-detail-summary strong { display: block; margin-top: 3px; font-family: "JetBrains Mono", monospace; font-size: 10px; }
+
+    .agent-detail-body { padding: 16px; }
+    .agent-detail-note { display: flex; align-items: flex-start; gap: 9px; padding: 11px 12px; color: var(--mu-grey-700); background: var(--mu-warning-50); border-left: 3px solid var(--mu-warning); font-size: 10px; line-height: 1.6; }
+    .agent-hash { margin-top: 14px; padding: 11px 12px; overflow-x: auto; color: var(--mu-grey-700); background: var(--mu-grey-50); border: 1px solid var(--mu-divider); border-radius: 5px; font-family: "JetBrains Mono", monospace; font-size: 9px; white-space: nowrap; }
+
+    .agent-memory-status { display: grid; grid-template-columns: minmax(0, 1fr) 300px; min-height: 560px; }
+    .agent-memory-main { min-width: 0; padding: 18px; border-right: 1px solid var(--mu-divider); }
+    .agent-memory-side { padding: 16px; }
+    .agent-empty-runtime { min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; border: 1px dashed var(--mu-grey-400); border-radius: 6px; }
+    .agent-empty-runtime .resource-icon { width: 44px; height: 44px; margin-bottom: 12px; }
+    .agent-empty-runtime h3 { margin: 0 0 5px; font-size: 13px; }
+    .agent-empty-runtime p { max-width: 420px; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+
+    .agent-memory-flow { display: grid; grid-template-columns: 1fr 34px 1fr 34px 1fr; align-items: center; margin-top: 16px; }
+    .agent-memory-step { min-height: 76px; display: flex; flex-direction: column; justify-content: center; padding: 10px; background: var(--mu-grey-50); border: 1px solid var(--mu-divider); border-radius: 5px; }
+    .agent-memory-step strong { font-size: 10px; }
+    .agent-memory-step span { margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .agent-memory-arrow { text-align: center; color: var(--mu-grey-500); }
+
+    .agent-prompt-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 610px; }
+    .agent-prompt-files { min-width: 0; border-right: 1px solid var(--mu-divider); }
+    .agent-prompt-file { width: 100%; min-height: 58px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 9px 12px; background: #fff; border: 0; border-bottom: 1px solid var(--mu-divider); cursor: pointer; text-align: left; }
+    .agent-prompt-file:hover { background: var(--mu-grey-50); }
+    .agent-prompt-file.active { background: var(--mu-primary-50); box-shadow: inset 3px 0 0 var(--mu-primary); }
+    .agent-prompt-file strong { display: block; font-size: 11px; }
+    .agent-prompt-file small { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .agent-prompt-preview { min-width: 0; }
+    .agent-prompt-code { min-height: 470px; margin: 0; padding: 17px; overflow: auto; color: #dbe7ea; background: #202c31; font-family: "JetBrains Mono", monospace; font-size: 10px; line-height: 1.75; white-space: pre-wrap; }
+
+    .agent-resource-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; }
+    .agent-resource-main { min-width: 0; border-right: 1px solid var(--mu-divider); }
+    .agent-resource-side { min-width: 0; padding: 15px; }
+    .agent-pack-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) 90px 92px; gap: 10px; align-items: center; min-height: 64px; padding: 10px 14px; border-bottom: 1px solid var(--mu-divider); }
+    .agent-pack-row strong { display: block; font-size: 11px; }
+    .agent-pack-row small { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .agent-pack-row .mono { text-align: right; font-size: 9px; }
+
+    .source-count-row { display: grid; grid-template-columns: 100px minmax(0, 1fr) 68px; gap: 8px; align-items: center; min-height: 29px; }
+    .source-count-row span { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .source-count-row strong { font-family: "JetBrains Mono", monospace; font-size: 9px; text-align: right; }
+    .source-count-bar { height: 6px; overflow: hidden; background: var(--mu-grey-200); border-radius: 3px; }
+    .source-count-bar i { display: block; height: 100%; background: var(--mu-primary); }
+
+    .agent-runtime-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+    .agent-runtime-main { min-width: 0; border-right: 1px solid var(--mu-divider); }
+    .agent-runtime-side { min-width: 0; padding: 15px; }
+    .agent-command-strip { display: flex; flex-wrap: wrap; gap: 7px; padding: 13px 14px; border-bottom: 1px solid var(--mu-divider); }
+    .agent-command { padding: 5px 8px; color: var(--mu-grey-800); background: var(--mu-grey-50); border: 1px solid var(--mu-grey-300); border-radius: 4px; font-family: "JetBrains Mono", monospace; font-size: 9px; }
+
+    @media (max-width: 920px) {
+      .memory-dual { grid-template-columns: 1fr; }
+      .agent-release-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .agent-release-strip > div:first-child { grid-column: 1 / -1; }
+      .agent-overview-grid,
+      .agent-memory-status,
+      .agent-resource-layout,
+      .agent-runtime-layout { grid-template-columns: 1fr; }
+      .agent-overview-section,
+      .agent-memory-main,
+      .agent-resource-main,
+      .agent-runtime-main { border-right: 0; border-bottom: 1px solid var(--mu-divider); }
+    }
+
+    @media (max-width: 640px) {
+      .agent-project-sourcebar { align-items: stretch; flex-direction: column; }
+      .agent-release-strip,
+      .agent-detail-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .agent-release-strip > div:first-child { grid-column: 1 / -1; }
+      .agent-inventory-layout,
+      .agent-prompt-layout { grid-template-columns: 1fr; }
+      .agent-inventory-sidebar,
+      .agent-prompt-files { border-right: 0; border-bottom: 1px solid var(--mu-divider); }
+      .agent-memory-flow { grid-template-columns: 1fr; gap: 6px; }
+      .agent-memory-arrow { transform: rotate(90deg); }
+      .agent-pack-row { grid-template-columns: 30px minmax(0, 1fr); }
+      .agent-pack-row > .mono,
+      .agent-pack-row > .pill { grid-column: 2; text-align: left; }
+    }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
@@ -1528,7 +1745,11 @@
       <div class="nav-group">
         <span class="nav-label">构建</span>
         <button class="nav-item" data-page="studio"><i data-lucide="workflow" class="icon"></i><span>RAG Studio</span></button>
-        <button class="nav-item" data-page="memory" style="padding-left:42px;font-size:12px;"><i data-lucide="brain-circuit" class="icon"></i><span>Memory 管理</span></button>
+      </div>
+      <div class="nav-group">
+        <span class="nav-label">Agent</span>
+        <button class="nav-item" data-page="agentproject"><i data-lucide="box" class="icon"></i><span>PhaseAgent 项目</span></button>
+        <button class="nav-item" data-page="memory"><i data-lucide="brain-circuit" class="icon"></i><span>Memory 管理</span></button>
       </div>
       <div class="nav-group">
         <span class="nav-label">验证</span>
@@ -2472,6 +2693,198 @@ The crossover from inverse to direct Hofmeister behavior occurs as salt concentr
       <section class="panel"><div class="panel-header"><h2>异常时间段</h2><button class="btn btn-sm"><i data-lucide="bell-plus" class="icon"></i>新建告警</button></div><div class="table-wrap"><table><thead><tr><th>开始时间</th><th>指标</th><th>观测值</th><th>基线</th><th>影响 Trace</th><th>状态</th></tr></thead><tbody><tr><td>今天 09:20</td><td>Rerank P95</td><td class="danger-text">318ms</td><td>240ms</td><td>312</td><td><span class="pill warning">观察中</span></td></tr><tr><td>昨天 21:05</td><td>空召回率</td><td>4.2%</td><td>1.9%</td><td>68</td><td><span class="pill success">已恢复</span></td></tr></tbody></table></div></section>
     </section>
 
+    <section class="page" id="page-agentproject">
+      <div class="page-header">
+        <div class="page-heading"><h1>PhaseAgent 项目</h1><p>发布清单、Skills、Memory、Prompts、资源与 Runtime 的统一视图</p></div>
+        <div class="page-actions"><button class="btn" id="exportAgentSnapshot"><i data-lucide="download" class="icon"></i>导出快照</button><button class="btn btn-primary" id="refreshAgentProject"><i data-lucide="scan-line" class="icon"></i>重新扫描</button></div>
+      </div>
+
+      <div class="agent-project-sourcebar">
+        <span class="agent-project-path"><i data-lucide="folder-git-2" class="icon"></i><strong>../PhaseAgent</strong></span>
+        <span class="pill info">Manifest snapshot</span>
+        <span class="pill success"><span class="status-dot green"></span>5 个交接文件可见</span>
+        <span class="pill warning">Release bundle 未展开</span>
+        <div class="filter-spacer"></div>
+        <span class="muted mono" style="font-size:9px;">release-manifest · 2026-07-25T07:19:42Z</span>
+      </div>
+
+      <div class="agent-project-tabs" role="tablist" aria-label="PhaseAgent 项目视图">
+        <button class="agent-project-tab active" data-agent-project-tab="overview" role="tab"><i data-lucide="network" class="icon"></i>项目拓扑</button>
+        <button class="agent-project-tab" data-agent-project-tab="skills" role="tab"><i data-lucide="blocks" class="icon"></i>Skills <span class="pill">21</span></button>
+        <button class="agent-project-tab" data-agent-project-tab="memory" role="tab"><i data-lucide="brain-circuit" class="icon"></i>Memory</button>
+        <button class="agent-project-tab" data-agent-project-tab="prompts" role="tab"><i data-lucide="file-code-2" class="icon"></i>Prompts</button>
+        <button class="agent-project-tab" data-agent-project-tab="resources" role="tab"><i data-lucide="database-zap" class="icon"></i>Resources</button>
+        <button class="agent-project-tab" data-agent-project-tab="runtime" role="tab"><i data-lucide="container" class="icon"></i>Runtime</button>
+      </div>
+
+      <div class="agent-project-shell">
+        <div class="agent-project-panel active" data-agent-project-panel="overview">
+          <div class="agent-release-strip">
+            <div><span>产品 / Release</span><strong>PhaSeAgent 0.6.0</strong><code>scientific-agent</code></div>
+            <div><span>分发范围</span><strong>Internal research</strong></div>
+            <div><span>Runtime image</span><strong>9.21 GB</strong></div>
+            <div><span>Skills</span><strong>21 / 2,398 files</strong></div>
+            <div><span>SDB v2</span><strong>289,822 records</strong></div>
+          </div>
+
+          <section class="agent-topology">
+            <div class="agent-topology-head"><h2>发布清单拓扑</h2><span class="pill success">frozen release</span></div>
+            <div class="agent-topology-scroll">
+              <div class="agent-topology-map">
+                <div class="agent-topology-node"><strong>PhaseAgent CLI</strong><span>shell · exec · agent · doctor · eb</span><code>default: shell</code></div>
+                <span class="agent-topology-arrow"></span>
+                <div class="agent-topology-node runtime"><strong>Agent Runtime</strong><span>Docker · read-write workspace</span><code>phaseagent-agent-platform:0.6.0</code></div>
+                <span class="agent-topology-arrow"></span>
+                <div class="agent-resource-cluster">
+                  <div class="agent-topology-node"><strong>Skills Bundle</strong><span>21 SKILL.md · 122 nodes</span><code>frozen</code></div>
+                  <div class="agent-topology-node"><strong>EB Service</strong><span>7,365 Markdown documents</span><code>auto / cuda / cpu / remote</code></div>
+                  <div class="agent-topology-node"><strong>SDB v2</strong><span>17 sources · 289,822 records</span><code>integrity: ok</code></div>
+                  <div class="agent-topology-node"><strong>Embedding</strong><span>Qwen3-VL-Embedding-2B</span><code>/mnt/models</code></div>
+                  <div class="agent-topology-node"><strong>Public Bio Pack</strong><span>public biomedical resources</span><code>184.7 MB</code></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="agent-overview-grid">
+            <section class="agent-overview-section">
+              <h3>当前交接目录</h3>
+              <div class="agent-manifest-tree">
+                <div class="tree-root">../PhaseAgent/</div>
+                <div class="tree-line">├── README.md <span class="tree-meta">internal handoff guide</span></div>
+                <div class="tree-line">├── handoff-manifest.json <span class="tree-meta">image + packs + boundary</span></div>
+                <div class="tree-line">├── phaseagent-0.6.0.release-manifest.json <span class="tree-meta">runtime + skills + resources</span></div>
+                <div class="tree-line">├── phaseagent.env.example <span class="tree-meta">host and agent defaults</span></div>
+                <div class="tree-line">└── install-internal.sh <span class="tree-meta">one-command installer</span></div>
+              </div>
+              <div class="agent-detail-note" style="margin-top:14px;"><i data-lucide="info" class="icon"></i><span>当前目录是内部交接快照，不是源码工作树。Skills 内容与 runtime/AGENTS.md 只在 release bundle 中声明，尚未展开到本地目录。</span></div>
+            </section>
+            <aside class="agent-integrity">
+              <h3>完整性边界</h3>
+              <div class="integrity-row"><i data-lucide="circle-check" class="icon"></i><strong>Benchmark 数据</strong><span>未包含</span></div>
+              <div class="integrity-row"><i data-lucide="circle-check" class="icon"></i><strong>API credentials</strong><span>未包含</span></div>
+              <div class="integrity-row"><i data-lucide="circle-check" class="icon"></i><strong>Licensed data</strong><span>未包含</span></div>
+              <div class="integrity-row"><i data-lucide="circle-check" class="icon"></i><strong>Skill rebuild</strong><span>无需</span></div>
+              <div class="integrity-row"><i data-lucide="lock-keyhole" class="icon"></i><strong>Distribution</strong><span>internal only</span></div>
+            </aside>
+          </div>
+        </div>
+
+        <div class="agent-project-panel" data-agent-project-panel="skills">
+          <div class="agent-inventory-layout">
+            <aside class="agent-inventory-sidebar">
+              <div class="agent-inventory-toolbar"><input class="form-control" id="agentSkillSearch" type="search" placeholder="筛选 Skill 层级"></div>
+              <button class="agent-tree-row active" data-agent-skill="bundle"><span class="resource-icon"><i data-lucide="package-open" class="icon"></i></span><span><strong>Skills Bundle</strong><small>skills/.agents/skills</small></span><span class="pill">2,398</span></button>
+              <button class="agent-tree-row" data-agent-skill="root"><span class="resource-icon"><i data-lucide="blocks" class="icon"></i></span><span><strong>Root Skills</strong><small>SKILL.md definitions</small></span><span class="pill info">21</span></button>
+              <button class="agent-tree-row" data-agent-skill="node"><span class="resource-icon"><i data-lucide="git-branch" class="icon"></i></span><span><strong>Skill Nodes</strong><small>node.md orchestration</small></span><span class="pill">122</span></button>
+              <button class="agent-tree-row" data-agent-skill="leaf"><span class="resource-icon"><i data-lucide="file-terminal" class="icon"></i></span><span><strong>Leaf Instructions</strong><small>leaf.md execution units</small></span><span class="pill">623</span></button>
+              <button class="agent-tree-row" data-agent-skill="support"><span class="resource-icon"><i data-lucide="files" class="icon"></i></span><span><strong>Supporting files</strong><small>references · scripts · assets</small></span><span class="pill">1,632</span></button>
+            </aside>
+            <section class="agent-inventory-detail">
+              <div class="agent-detail-header"><div><strong id="agentSkillTitle">Skills Bundle</strong><span id="agentSkillPath">skills/.agents/skills</span></div><span class="pill success" id="agentSkillState">FROZEN</span></div>
+              <div class="agent-detail-summary"><div><span>文件数</span><strong id="agentSkillFiles">2,398</strong></div><div><span>定义数</span><strong id="agentSkillDefinitions">21</strong></div><div><span>节点数</span><strong id="agentSkillNodes">122</strong></div><div><span>叶子数</span><strong id="agentSkillLeaves">623</strong></div></div>
+              <div class="agent-detail-body" id="agentSkillDetail">
+                <div class="table-wrap"><table><thead><tr><th>层级</th><th>文件模式</th><th>数量</th><th>用途</th><th>可浏览状态</th></tr></thead><tbody><tr><td>Root</td><td class="mono">**/SKILL.md</td><td>21</td><td>技能入口与路由说明</td><td><span class="pill warning">Manifest only</span></td></tr><tr><td>Node</td><td class="mono">**/node.md</td><td>122</td><td>多阶段编排节点</td><td><span class="pill warning">Manifest only</span></td></tr><tr><td>Leaf</td><td class="mono">**/leaf.md</td><td>623</td><td>可执行叶子指令</td><td><span class="pill warning">Manifest only</span></td></tr><tr><td>Support</td><td>其他资源</td><td>1,632</td><td>脚本、参考资料与资产</td><td><span class="pill warning">Manifest only</span></td></tr></tbody></table></div>
+                <div class="agent-detail-note"><i data-lucide="archive" class="icon"></i><span>Manifest 只提供数量和整棵目录的指纹，没有列出 21 个 Skill 的名称。连接已安装的 PhaseAgent runtime 或展开 release bundle 后，可在此处显示真实 Skill 树与 SKILL.md 内容。</span></div>
+                <div class="agent-hash">tree_sha256 · 331b982c21a20755298c52f01f7b86e4a7cda2a9cf9d0f6bca6ad0be6d18e890</div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div class="agent-project-panel" data-agent-project-panel="memory">
+          <div class="agent-memory-status">
+            <section class="agent-memory-main">
+              <div class="agent-empty-runtime"><span class="resource-icon"><i data-lucide="brain-circuit" class="icon"></i></span><h3>发布清单未声明 Memory 后端</h3><p>当前 handoff manifest 没有 session store、checkpoint、conversation memory 或长期向量 Memory 配置，因此不能把现有 RAG Memory 指标归因到 PhaseAgent 0.6.0。</p><button class="btn btn-primary" id="connectAgentRuntime" style="margin-top:14px;"><i data-lucide="plug-zap" class="icon"></i>连接已安装 Runtime</button></div>
+              <div class="agent-memory-flow"><div class="agent-memory-step"><strong>Agent events</strong><span>turn · tool · skill · result</span></div><span class="agent-memory-arrow">→</span><div class="agent-memory-step"><strong>Runtime collector</strong><span>待接入 /status 与 logs</span></div><span class="agent-memory-arrow">→</span><div class="agent-memory-step"><strong>Memory view</strong><span>Session、Checkpoint、Writeback</span></div></div>
+            </section>
+            <aside class="agent-memory-side">
+              <div class="panel-header" style="padding:0 0 10px;border:0;"><h2>可确认的运行边界</h2><span class="pill warning">未连接</span></div>
+              <div class="toggle-row"><span>Workspace</span><strong>read-write</strong></div>
+              <div class="toggle-row"><span>Container target</span><strong class="mono">/workspace</strong></div>
+              <div class="toggle-row"><span>Vector DB</span><strong class="mono">/mnt/vector-db</strong></div>
+              <div class="toggle-row"><span>Extraction cache</span><strong class="mono">/mnt/eb-extraction-cache</strong></div>
+              <div class="toggle-row"><span>Memory schema</span><strong>not declared</strong></div>
+              <div class="toggle-row"><span>Session telemetry</span><strong>not connected</strong></div>
+            </aside>
+          </div>
+        </div>
+
+        <div class="agent-project-panel" data-agent-project-panel="prompts">
+          <div class="agent-prompt-layout">
+            <aside class="agent-prompt-files">
+              <div class="agent-inventory-toolbar"><span class="muted" style="font-size:10px;">指令与 Agent 配置</span></div>
+              <button class="agent-prompt-file active" data-agent-prompt="agents"><span class="resource-icon"><i data-lucide="file-lock-2" class="icon"></i></span><span><strong>runtime/AGENTS.md</strong><small>Agent instructions · manifest declared</small></span><span class="pill warning">未展开</span></button>
+              <button class="agent-prompt-file" data-agent-prompt="env"><span class="resource-icon"><i data-lucide="settings-2" class="icon"></i></span><span><strong>phaseagent.env.example</strong><small>Backend · Model · Reasoning</small></span><span class="pill success">可读</span></button>
+              <button class="agent-prompt-file" data-agent-prompt="readme"><span class="resource-icon"><i data-lucide="book-open-text" class="icon"></i></span><span><strong>README.md</strong><small>Launch and operator instructions</small></span><span class="pill success">可读</span></button>
+            </aside>
+            <section class="agent-prompt-preview">
+              <div class="agent-detail-header"><div><strong id="agentPromptTitle">runtime/AGENTS.md</strong><span id="agentPromptMeta">sha256 · 4d7bb79f…e9491c1</span></div><button class="icon-btn" id="copyAgentPrompt" title="复制内容"><i data-lucide="copy" class="icon"></i></button></div>
+              <pre class="agent-prompt-code" id="agentPromptCode"># Content not materialized
+
+The release manifest declares this instruction file:
+
+path: runtime/AGENTS.md
+sha256: 4d7bb79f4664728fb38520f1299545607373602d33085c402088583aee9491c1
+
+The handoff directory does not contain the expanded release bundle,
+so the instruction content cannot be inspected from ../PhaseAgent yet.
+
+Expand phaseagent-0.6.0.tar.gz or connect the installed runtime to load it.</pre>
+              <div class="agent-detail-summary"><div><span>Backend</span><strong>codex</strong></div><div><span>Model</span><strong>gpt-5.4</strong></div><div><span>Reasoning</span><strong>xhigh</strong></div><div><span>Workspace</span><strong>/workspace</strong></div></div>
+            </section>
+          </div>
+        </div>
+
+        <div class="agent-project-panel" data-agent-project-panel="resources">
+          <div class="agent-resource-layout">
+            <section class="agent-resource-main">
+              <div class="agent-detail-header"><div><strong>Resource Packs</strong><span>handoff-manifest.json · exact archive inventory</span></div><span class="pill">4 packs</span></div>
+              <div class="agent-pack-row"><span class="resource-icon"><i data-lucide="file-stack" class="icon"></i></span><span><strong>Evidence Base Pack</strong><small>phaseagent-eb-pack-0.6.0.tar.zst</small></span><strong class="mono">3.53 GB</strong><span class="pill success">declared</span></div>
+              <div class="agent-pack-row"><span class="resource-icon"><i data-lucide="database" class="icon"></i></span><span><strong>SDB v2.0.0</strong><small>phaseagent-sdb-v2.0.0.tar.zst</small></span><strong class="mono">228.2 MB</strong><span class="pill success">frozen</span></div>
+              <div class="agent-pack-row"><span class="resource-icon"><i data-lucide="scan-search" class="icon"></i></span><span><strong>Qwen3-VL Embedding</strong><small>qwen3-vl-embedding-2b.tar.zst</small></span><strong class="mono">3.33 GB</strong><span class="pill success">declared</span></div>
+              <div class="agent-pack-row"><span class="resource-icon"><i data-lucide="dna" class="icon"></i></span><span><strong>Biomedical Public</strong><small>phaseagent-biomedical-public-pack-0.6.0.tar.zst</small></span><strong class="mono">184.7 MB</strong><span class="pill success">public</span></div>
+              <div class="agent-detail-header"><div><strong>SDB v2 质量</strong><span>17 sources · integrity check: ok</span></div><span class="pill success">289,822 unique</span></div>
+              <div class="agent-detail-summary"><div><span>Records</span><strong>289,822</strong></div><div><span>FTS records</span><strong>289,822</strong></div><div><span>Aliases</span><strong>3,297,487</strong></div><div><span>Missing IDs</span><strong>0</strong></div></div>
+            </section>
+            <aside class="agent-resource-side">
+              <div class="panel-header" style="padding:0 0 10px;border:0;"><h2>主要数据源</h2><span class="pill">Top 6 / 17</span></div>
+              <div class="source-count-row"><span>PhaSePred</span><div class="source-count-bar"><i style="width:100%;"></i></div><strong>116,806</strong></div>
+              <div class="source-count-row"><span>Reactome</span><div class="source-count-bar"><i style="width:78.4%;"></i></div><strong>91,531</strong></div>
+              <div class="source-count-row"><span>CORUM</span><div class="source-count-bar"><i style="width:22.9%;"></i></div><strong>26,762</strong></div>
+              <div class="source-count-row"><span>MLOsMetaDB</span><div class="source-count-bar"><i style="width:10.3%;"></i></div><strong>12,038</strong></div>
+              <div class="source-count-row"><span>CD-CODE</span><div class="source-count-bar"><i style="width:9.5%;"></i></div><strong>11,133</strong></div>
+              <div class="source-count-row"><span>DrLLPS</span><div class="source-count-bar"><i style="width:7.9%;"></i></div><strong>9,281</strong></div>
+              <div class="toggle-row" style="margin-top:14px;"><span>Live adapters</span><strong>5</strong></div>
+              <div class="muted" style="font-size:9px;line-height:1.65;">UniProt · STRING · dbPTM · InterPro · MobiDB。外部 enrichment 不计入本地 SDB 命中。</div>
+            </aside>
+          </div>
+        </div>
+
+        <div class="agent-project-panel" data-agent-project-panel="runtime">
+          <div class="agent-runtime-layout">
+            <section class="agent-runtime-main">
+              <div class="agent-detail-header"><div><strong>phaseagent-agent-platform:0.6.0</strong><span>Docker runtime · 9,214,150,690 bytes</span></div><span class="pill success">manifest verified</span></div>
+              <div class="agent-command-strip"><span class="agent-command">shell</span><span class="agent-command">exec</span><span class="agent-command">agent</span><span class="agent-command">info</span><span class="agent-command">resources</span><span class="agent-command">doctor</span><span class="agent-command">eb</span><span class="agent-command">status</span><span class="agent-command">logs</span><span class="agent-command">wait</span><span class="agent-command">stop</span></div>
+              <div class="table-wrap"><table><thead><tr><th>Runtime contract</th><th>值</th><th>来源</th></tr></thead><tbody><tr><td>Default command</td><td class="mono">shell</td><td>release manifest</td></tr><tr><td>Agent backend</td><td class="mono">codex</td><td>env example</td></tr><tr><td>Model</td><td class="mono">gpt-5.4 / xhigh</td><td>env example</td></tr><tr><td>Workspace target</td><td class="mono">/workspace · read-write</td><td>release manifest</td></tr><tr><td>EB socket</td><td class="mono">/run/phaseagent-eb/eb.sock</td><td>release manifest</td></tr><tr><td>Vector DB</td><td class="mono">/mnt/vector-db</td><td>release manifest</td></tr><tr><td>Embedding model</td><td class="mono">/mnt/models/Qwen3-VL-Embedding-2B</td><td>release manifest</td></tr></tbody></table></div>
+              <div class="agent-hash" style="margin:14px;">image_id · sha256:1407d169bc1dd7ce58a6ea516689b400337d06db2206d7f58851541586af9962</div>
+            </section>
+            <aside class="agent-runtime-side">
+              <div class="panel-header" style="padding:0 0 10px;border:0;"><h2>EB 启动配置</h2><span class="pill info">auto</span></div>
+              <div class="toggle-row"><span>Device mode</span><strong>auto</strong></div>
+              <div class="toggle-row"><span>可选模式</span><strong>4</strong></div>
+              <div class="toggle-row"><span>Local backend</span><strong>auto</strong></div>
+              <div class="toggle-row"><span>可选 backend</span><strong>docker / host</strong></div>
+              <pre class="code-view" style="margin-top:14px;border-radius:5px;">phaseagent resources
+phaseagent doctor
+phaseagent eb start --eb-mode auto
+phaseagent agent --backend codex</pre>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="page" id="page-memory">
       <div class="page-header">
         <div class="page-heading"><h1>Memory 管理</h1><p>自动记忆管理 · 智能路由分发 · 长短周期策略</p></div>
@@ -2549,69 +2962,6 @@ The crossover from inverse to direct Hofmeister behavior occurs as salt concentr
         </div>
       </section>
     </section>
-      <div class="page-header">
-        <div class="page-heading"><h1>Memory 管理</h1><p>自动记忆管理 · 智能路由分发 · 长短周期策略</p></div>
-        <div class="page-actions"><button class="btn"><i data-lucide="download" class="icon"></i>导出配置</button><button class="btn btn-primary" id="addRouteRule"><i data-lucide="plus" class="icon"></i>新建路由规则</button></div>
-      </div>
-
-
-
-</section>
-      </div>
-
-      <section class="panel">
-        <div class="panel-header"><h2>路由流量分布 · 最近 24 小时</h2><div class="segmented"><button class="active">按意图</button><button>按 Prompt 版本</button></div></div>
-        <div class="memory-routing-grid">
-          <div class="memory-route-card">
-            <div class="route-card-header"><span class="status-dot" style="background:var(--mu-primary);"></span><strong>机制解释</strong><span class="muted">prompt-v12</span></div>
-            <div class="route-bar"><span style="width:38%;background:var(--mu-primary);"></span></div>
-            <div class="route-card-foot"><span>3,201 次</span><span>38%</span><span class="success-text">92.4% 命中</span></div>
-          </div>
-          <div class="memory-route-card">
-            <div class="route-card-header"><span class="status-dot" style="background:#00897b;"></span><strong>事实查询</strong><span class="muted">prompt-v11</span></div>
-            <div class="route-bar"><span style="width:26%;background:#00897b;"></span></div>
-            <div class="route-card-foot"><span>2,189 次</span><span>26%</span><span class="success-text">88.1% 命中</span></div>
-          </div>
-          <div class="memory-route-card">
-            <div class="route-card-header"><span class="status-dot" style="background:var(--mu-warning);"></span><strong>跨库综合</strong><span class="muted">prompt-v12</span></div>
-            <div class="route-bar"><span style="width:18%;background:var(--mu-warning);"></span></div>
-            <div class="route-card-foot"><span>1,516 次</span><span>18%</span><span class="success-text">85.7% 命中</span></div>
-          </div>
-          <div class="memory-route-card">
-            <div class="route-card-header"><span class="status-dot" style="background:var(--mu-success);"></span><strong>通用问答</strong><span class="muted">prompt-v9</span></div>
-            <div class="route-bar"><span style="width:12%;background:var(--mu-success);"></span></div>
-            <div class="route-card-foot"><span>1,010 次</span><span>12%</span><span class="success-text">91.8% 命中</span></div>
-          </div>
-          <div class="memory-route-card">
-            <div class="route-card-header"><span class="status-dot" style="background:var(--mu-error);"></span><strong>证据引用</strong><span class="muted">prompt-v10</span></div>
-            <div class="route-bar"><span style="width:6%;background:var(--mu-error);"></span></div>
-            <div class="route-card-foot"><span>504 次</span><span>6%</span><span class="success-text">84.2% 命中</span></div>
-          </div>
-        </div>
-      </section>
-
-      <div class="memory-dual" style="margin-top:20px;">
-        <section class="panel">
-          <div class="panel-header"><h2><span class="memory-type-badge short">短期 Memory</span> 会话上下文</h2><span class="pill">TTL 30min</span></div>
-          <div class="panel-body">
-            <div class="toggle-row"><span>当前活跃</span><strong class="mono">342 sessions</strong></div>
-            <div class="toggle-row"><span>平均轮数</span><strong class="mono">4.2 轮</strong></div>
-            <div class="toggle-row"><span>平均 Token</span><strong class="mono">1,840 / session</strong></div>
-            <div class="toggle-row"><span>存储后端</span><strong class="mono">Redis · 30min TTL</strong></div>
-            <div style="margin-top:10px;font-size:11px;color:var(--muted);">对话结束后 30 分钟自动过期，跨 Session 不共享。存储当前轮次的 Query、Context、Answer 及中间检索结果。</div>
-          </div>
-        </section>
-        <section class="panel">
-          <div class="panel-header"><h2><span class="memory-type-badge long">长期 Memory</span> 知识沉淀</h2><span class="pill">持久化</span></div>
-          <div class="panel-body">
-            <div class="toggle-row"><span>向量条目</span><strong class="mono">48,266 条</strong></div>
-            <div class="toggle-row"><span>索引版本</span><strong class="mono">idx-mem-003</strong></div>
-            <div class="toggle-row"><span>Embedding</span><strong class="mono">bge-m3 · 1024d</strong></div>
-            <div class="toggle-row"><span>摘要压缩率</span><strong class="mono">86.4%</strong></div>
-            <div style="margin-top:10px;font-size:11px;color:var(--muted);">将短期 Memory 中高价值结论压缩为向量摘要持久化，跨 Session 复用。按用户 ID + 话题向量检索相关历史。</div>
-          </div>
-        </section>
-      </div>
 
   </main>
 
@@ -4203,6 +4553,155 @@ LIMIT 20;</div>
       });
 
       bindToast("reparseMultimodal", "已重新解析，共识别 47 项多模态内容");
+
+      // --- PhaseAgent 项目可视化 ---
+      const agentProjectTabs = [...document.querySelectorAll("[data-agent-project-tab]")];
+      const agentProjectPanels = [...document.querySelectorAll("[data-agent-project-panel]")];
+
+      agentProjectTabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+          const target = tab.dataset.agentProjectTab;
+          agentProjectTabs.forEach(item => {
+            const isActive = item === tab;
+            item.classList.toggle("active", isActive);
+            item.setAttribute("aria-selected", String(isActive));
+          });
+          agentProjectPanels.forEach(panel => panel.classList.toggle("active", panel.dataset.agentProjectPanel === target));
+        });
+      });
+
+      const agentSkillRows = [...document.querySelectorAll("[data-agent-skill]")];
+      const agentSkillDetails = {
+        bundle: {
+          title: "Skills Bundle", path: "skills/.agents/skills", state: "FROZEN",
+          files: "2,398", definitions: "21", nodes: "122", leaves: "623",
+          body: `<div class="table-wrap"><table><thead><tr><th>层级</th><th>文件模式</th><th>数量</th><th>用途</th><th>可浏览状态</th></tr></thead><tbody><tr><td>Root</td><td class="mono">**/SKILL.md</td><td>21</td><td>技能入口与路由说明</td><td><span class="pill warning">Manifest only</span></td></tr><tr><td>Node</td><td class="mono">**/node.md</td><td>122</td><td>多阶段编排节点</td><td><span class="pill warning">Manifest only</span></td></tr><tr><td>Leaf</td><td class="mono">**/leaf.md</td><td>623</td><td>可执行叶子指令</td><td><span class="pill warning">Manifest only</span></td></tr><tr><td>Support</td><td>其他资源</td><td>1,632</td><td>脚本、参考资料与资产</td><td><span class="pill warning">Manifest only</span></td></tr></tbody></table></div><div class="agent-detail-note"><i data-lucide="archive" class="icon"></i><span>Manifest 只提供数量和整棵目录的指纹，没有列出 21 个 Skill 的名称。连接已安装的 PhaseAgent runtime 或展开 release bundle 后，可在此处显示真实 Skill 树与 SKILL.md 内容。</span></div><div class="agent-hash">tree_sha256 · 331b982c21a20755298c52f01f7b86e4a7cda2a9cf9d0f6bca6ad0be6d18e890</div>`
+        },
+        root: {
+          title: "Root Skills", path: "skills/.agents/skills/**/SKILL.md", state: "MANIFEST ONLY",
+          files: "21", definitions: "21", nodes: "—", leaves: "—",
+          body: `<div class="agent-detail-note"><i data-lucide="blocks" class="icon"></i><span>发布清单确认存在 21 个 SKILL.md 入口，但没有逐项文件名或正文。此处不会根据通用 Skill 猜测项目能力；展开 release bundle 后再生成按目录分组的真实清单。</span></div><div class="agent-hash">pattern · **/SKILL.md · count 21</div>`
+        },
+        node: {
+          title: "Skill Nodes", path: "skills/.agents/skills/**/node.md", state: "MANIFEST ONLY",
+          files: "122", definitions: "—", nodes: "122", leaves: "—",
+          body: `<div class="agent-detail-note"><i data-lucide="git-branch" class="icon"></i><span>Node 文件描述 Skill 内部的阶段与编排关系。Manifest 仅记录总数 122，当前交接目录不能解析节点依赖图。</span></div><div class="agent-hash">pattern · **/node.md · count 122</div>`
+        },
+        leaf: {
+          title: "Leaf Instructions", path: "skills/.agents/skills/**/leaf.md", state: "MANIFEST ONLY",
+          files: "623", definitions: "—", nodes: "—", leaves: "623",
+          body: `<div class="agent-detail-note"><i data-lucide="file-terminal" class="icon"></i><span>Leaf 文件是 Skill 的执行单元。Manifest 确认 623 个 leaf.md，但没有暴露工具、输入输出或调用条件。</span></div><div class="agent-hash">pattern · **/leaf.md · count 623</div>`
+        },
+        support: {
+          title: "Supporting Files", path: "skills/.agents/skills/**", state: "DERIVED",
+          files: "1,632", definitions: "—", nodes: "—", leaves: "—",
+          body: `<div class="agent-detail-note"><i data-lucide="files" class="icon"></i><span>支持文件数按 2,398 - 21 - 122 - 623 计算为 1,632，可能包含脚本、引用资料、模板与资产。具体类型需展开 bundle 后确认。</span></div><div class="agent-hash">derived_count · 1632</div>`
+        }
+      };
+
+      function renderAgentSkill(key) {
+        const detail = agentSkillDetails[key];
+        if (!detail) return;
+        agentSkillRows.forEach(row => row.classList.toggle("active", row.dataset.agentSkill === key));
+        document.getElementById("agentSkillTitle").textContent = detail.title;
+        document.getElementById("agentSkillPath").textContent = detail.path;
+        document.getElementById("agentSkillState").textContent = detail.state;
+        document.getElementById("agentSkillFiles").textContent = detail.files;
+        document.getElementById("agentSkillDefinitions").textContent = detail.definitions;
+        document.getElementById("agentSkillNodes").textContent = detail.nodes;
+        document.getElementById("agentSkillLeaves").textContent = detail.leaves;
+        document.getElementById("agentSkillDetail").innerHTML = detail.body;
+        try { if (window.lucide) window.lucide.createIcons(); } catch(e) { console.warn(e); }
+      }
+
+      agentSkillRows.forEach(row => row.addEventListener("click", () => renderAgentSkill(row.dataset.agentSkill)));
+      document.getElementById("agentSkillSearch")?.addEventListener("input", event => {
+        const keyword = event.target.value.trim().toLowerCase();
+        agentSkillRows.forEach(row => { row.hidden = keyword.length > 0 && !row.textContent.toLowerCase().includes(keyword); });
+      });
+
+      const agentPromptRows = [...document.querySelectorAll("[data-agent-prompt]")];
+      const agentPromptFiles = {
+        agents: {
+          title: "runtime/AGENTS.md",
+          meta: "sha256 · 4d7bb79f…e9491c1 · manifest declared",
+          content: `# Content not materialized
+
+The release manifest declares this instruction file:
+
+path: runtime/AGENTS.md
+sha256: 4d7bb79f4664728fb38520f1299545607373602d33085c402088583aee9491c1
+
+The handoff directory does not contain the expanded release bundle,
+so the instruction content cannot be inspected from ../PhaseAgent yet.
+
+Expand phaseagent-0.6.0.tar.gz or connect the installed runtime to load it.`
+        },
+        env: {
+          title: "phaseagent.env.example",
+          meta: "host configuration · readable from handoff",
+          content: `# PhaSeAgent 0.6.0 host configuration
+PHASEAGENT_IMAGE=phaseagent-agent-platform:0.6.0
+PHASEAGENT_HOME=~/.phaseagent
+PHASEAGENT_DATA_ROOT=/path/to/phaseagent-data
+
+# EB mode: auto | cuda | cpu | remote
+PHASEAGENT_EB_MODE=auto
+# Local backend: auto | docker | host
+PHASEAGENT_EB_LOCAL_BACKEND=auto
+PHASEAGENT_EB_DEVICE=0
+
+# Agent defaults
+PHASEAGENT_AGENT_BACKEND=codex
+PHASEAGENT_CODEX_MODEL=gpt-5.4
+PHASEAGENT_CODEX_REASONING=xhigh`
+        },
+        readme: {
+          title: "README.md",
+          meta: "internal handoff guide · readable from handoff",
+          content: `# PhaSeAgent 0.6.0 internal handoff
+
+This directory is an internal-research handoff, not a source checkout.
+It contains the frozen release, Docker image, EB evidence pack, SDB-v2,
+the matching Qwen embedding model, and public biomedical data.
+
+## Install and verify
+./install-internal.sh /mnt/data/phaseagent-data
+phaseagent resources
+phaseagent doctor
+phaseagent eb start --eb-mode auto
+
+## Start the agent
+phaseagent agent --backend codex
+
+Excluded: licensed data mounts, credentials, original PDFs,
+and benchmark payloads.`
+        }
+      };
+
+      function renderAgentPrompt(key) {
+        const file = agentPromptFiles[key];
+        if (!file) return;
+        agentPromptRows.forEach(row => row.classList.toggle("active", row.dataset.agentPrompt === key));
+        document.getElementById("agentPromptTitle").textContent = file.title;
+        document.getElementById("agentPromptMeta").textContent = file.meta;
+        document.getElementById("agentPromptCode").textContent = file.content;
+      }
+
+      agentPromptRows.forEach(row => row.addEventListener("click", () => renderAgentPrompt(row.dataset.agentPrompt)));
+      document.getElementById("copyAgentPrompt")?.addEventListener("click", async () => {
+        const content = document.getElementById("agentPromptCode")?.textContent || "";
+        try {
+          await navigator.clipboard.writeText(content);
+          showToast("当前文件内容已复制");
+        } catch (error) {
+          showToast("浏览器未开放剪贴板权限");
+        }
+      });
+
+      bindToast("refreshAgentProject", "已重新读取 5 个交接文件，Manifest 无变化");
+      bindToast("exportAgentSnapshot", "PhaseAgent 项目快照已导出");
+      bindToast("connectAgentRuntime", "需要先安装 Runtime，并接入 status / logs collector");
 
       // --- 分块参数实时预览更新 ---
       const dedupThresholdSlider = document.querySelector(".dedup-sidebar input[type='range']");

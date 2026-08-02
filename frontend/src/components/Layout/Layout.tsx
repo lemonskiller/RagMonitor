@@ -8,7 +8,7 @@ import {
 import {
   LayoutDashboard, Database, Library, Workflow, BrainCircuit,
   FlaskConical, Activity, CircleAlert, ChartNoAxesCombined,
-  Settings2, Menu, Search, BookOpen, Bell, ChevronDown,
+  Settings2, Menu, Search, BookOpen, Bell, ChevronDown, Boxes,
 } from "lucide-react";
 
 const DRAWER_WIDTH = 240;
@@ -28,8 +28,12 @@ const NAV_GROUPS = [
   },
   {
     label: "构建",
+    items: [{ path: "/studio", icon: Workflow, label: "RAG Studio" }],
+  },
+  {
+    label: "Agent",
     items: [
-      { path: "/studio", icon: Workflow, label: "RAG Studio" },
+      { path: "/agent-project", icon: Boxes, label: "PhaseAgent 项目" },
       { path: "/memory", icon: BrainCircuit, label: "Memory 管理" },
     ],
   },
@@ -110,7 +114,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     bgcolor: active ? "secondary.50" : "transparent",
                     fontWeight: active ? 600 : 500,
                     "&:hover": { bgcolor: "grey.100" },
-                    pl: item.path === "/memory" ? 5 : 2,
+                    pl: 2,
                   }}
                 >
                   <item.icon size={18} style={{ marginRight: 12 }} />
@@ -158,18 +162,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           elevation={0}
           sx={{ height: TOPBAR_HEIGHT, borderBottom: "1px solid", borderColor: "divider" }}
         >
-          <Toolbar sx={{ gap: 2, height: TOPBAR_HEIGHT }}>
+          <Toolbar sx={{ gap: { xs: 0.5, sm: 2 }, height: TOPBAR_HEIGHT, px: { xs: 1.5, sm: 3 }, minWidth: 0 }}>
             {isMobile && (
-              <IconButton onClick={() => setMobileOpen(true)}><Menu size={20} /></IconButton>
+              <IconButton aria-label="打开导航" onClick={() => setMobileOpen(true)}><Menu size={20} /></IconButton>
             )}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, pr: 2, borderRight: "1px solid", borderColor: "divider" }}>
-              <Typography variant="body2" fontWeight={600}>PhaseAgent</Typography>
-              <Typography variant="body2" color="text.secondary">/</Typography>
-              <Typography variant="body2" fontWeight={600}>Research RAG</Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, pr: { xs: 1, sm: 2 }, borderRight: "1px solid", borderColor: "divider", minWidth: 0 }}>
+              <Typography variant="body2" fontWeight={600} sx={{ display: { xs: "none", sm: "block" } }}>PhaseAgent</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>/</Typography>
+              <Typography variant="body2" fontWeight={600} noWrap>Research RAG</Typography>
               <ChevronDown size={14} />
             </Box>
 
-            <Box sx={{ flex: 1, maxWidth: 440, position: "relative" }}>
+            <Box sx={{ flex: 1, maxWidth: 440, position: "relative", display: { xs: "none", md: "block" } }}>
               <Search size={16} style={{ position: "absolute", left: 12, top: 12, color: "#9e9e9e" }} />
               <InputBase
                 placeholder="搜索 Trace、Case 或问题"
@@ -181,8 +185,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Box>
 
             <Box sx={{ flex: 1 }} />
-            <IconButton><BookOpen size={18} /></IconButton>
-            <IconButton><Bell size={18} /></IconButton>
+            <IconButton aria-label="文档"><BookOpen size={18} /></IconButton>
+            <IconButton aria-label="通知"><Bell size={18} /></IconButton>
             <Avatar sx={{ width: 36, height: 36, bgcolor: "primary.main", fontSize: 14 }}>YZ</Avatar>
           </Toolbar>
         </AppBar>

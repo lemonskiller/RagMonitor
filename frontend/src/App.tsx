@@ -11,6 +11,7 @@ import Traces from "./pages/Traces/Traces";
 import BadCases from "./pages/BadCases/BadCases";
 import Monitoring from "./pages/Monitoring/Monitoring";
 import Memory from "./pages/Memory/Memory";
+import AgentProject from "./pages/AgentProject/AgentProject";
 import Settings from "./pages/Settings/Settings";
 
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="/traces" element={<Traces />} />
             <Route path="/badcases" element={<BadCases />} />
             <Route path="/monitoring" element={<Monitoring />} />
+            <Route path="/agent-project" element={<AgentProject />} />
             <Route path="/memory" element={<Memory />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
