@@ -16,6 +16,7 @@ import {
   Skeleton,
   Snackbar,
   Stack,
+  Switch,
   Tab,
   Table,
   TableBody,
@@ -29,6 +30,7 @@ import {
 } from "@mui/material";
 import {
   Archive,
+  ArrowDown,
   BookOpenText,
   Boxes,
   CheckCircle2,
@@ -39,6 +41,7 @@ import {
   FileCode2,
   FileText,
   FolderGit2,
+  GitFork,
   HardDrive,
   Network,
   RefreshCw,
@@ -47,7 +50,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-type ViewId = "overview" | "files" | "resources" | "skills" | "databases" | "runtime" | "prompts";
+type ViewId = "overview" | "retrieval" | "files" | "resources" | "skills" | "databases" | "runtime" | "prompts";
 
 type PhaseFile = {
   name: string;
@@ -150,6 +153,7 @@ const API_BASE = new URL("api/", window.location.origin + import.meta.env.BASE_U
 
 const VIEW_TABS: Array<{ id: ViewId; label: string; icon: typeof Network }> = [
   { id: "overview", label: "真实概览", icon: Network },
+  { id: "retrieval", label: "召回链路", icon: GitFork },
   { id: "files", label: "交接文件", icon: FileText },
   { id: "resources", label: "资源包", icon: Database },
   { id: "skills", label: "Skills", icon: Boxes },
@@ -601,6 +605,213 @@ function DatabasesView({ project, loading, onResample }: { project: PhaseAgentPr
   );
 }
 
+type PipelineNodeProps = {
+  step: string;
+  title: string;
+  subtitle: string;
+  status: "ready" | "declared" | "planned";
+  children: React.ReactNode;
+};
+
+function PipelineNode({ step, title, subtitle, status, children }: PipelineNodeProps) {
+  const statusMap = {
+    ready: { label: "可查询", color: "success" as const },
+    declared: { label: "已声明", color: "info" as const },
+    planned: { label: "待接入", color: "default" as const },
+  };
+  const state = statusMap[status];
+  return (
+    <Card sx={{ ...PANEL_SX, height: "100%", borderColor: status === "planned" ? "divider" : "primary.light" }}>
+      <Box sx={{ px: 2, py: 1.4, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1, borderBottom: "1px solid", borderColor: "divider" }}>
+        <Stack direction="row" spacing={1.25} minWidth={0}>
+          <Box sx={{ ...MONO_SX, width: 26, height: 26, flex: "0 0 26px", display: "grid", placeItems: "center", border: "1px solid", borderColor: "divider", borderRadius: 1, fontSize: 10, fontWeight: 800 }}>{step}</Box>
+          <Box minWidth={0}>
+            <Typography variant="body2" fontWeight={800}>{title}</Typography>
+            <Typography variant="caption" color="text.secondary">{subtitle}</Typography>
+          </Box>
+        </Stack>
+        <Chip size="small" label={state.label} color={state.color} variant={status === "planned" ? "outlined" : "filled"} />
+      </Box>
+      <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>{children}</CardContent>
+    </Card>
+  );
+}
+
+function PipelineConnector({ label }: { label?: string }) {
+  return (
+    <Box aria-hidden="true" sx={{ height: 38, display: "flex", alignItems: "center", justifyContent: "center", gap: 1, color: "text.secondary" }}>
+      <Box sx={{ width: "1px", height: 16, bgcolor: "divider" }} />
+      <ArrowDown size={15} />
+      {label && <Typography variant="caption" sx={{ ...MONO_SX, fontSize: 10 }}>{label}</Typography>}
+    </Box>
+  );
+}
+
+function OutputLine({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <Box sx={{ display: "grid", gridTemplateColumns: "104px minmax(0, 1fr)", gap: 1.25, py: 0.65, borderBottom: "1px solid", borderColor: "divider", "&:last-child": { borderBottom: 0 } }}>
+      <Typography variant="caption" color="text.secondary">{label}</Typography>
+      <Typography variant="caption" fontWeight={accent ? 800 : 600} sx={{ ...MONO_SX, overflowWrap: "anywhere", color: accent ? "primary.dark" : "text.primary" }}>{value}</Typography>
+    </Box>
+  );
+}
+
+function RetrievalPipeline({ project }: { project: PhaseAgentProject }) {
+  const [memoryEnabled, setMemoryEnabled] = useState(true);
+  const [expansionEnabled, setExpansionEnabled] = useState(true);
+  const [denseEnabled, setDenseEnabled] = useState(true);
+  const [keywordEnabled, setKeywordEnabled] = useState(true);
+  const [fusionMethod, setFusionMethod] = useState("rrf");
+  const [rerankerEnabled, setRerankerEnabled] = useState(true);
+  const sdbAvailable = project.databases.sdb.sqliteFile.exists;
+
+  return (
+    <Stack spacing={2}>
+      <Card sx={PANEL_SX}>
+        <CardContent sx={{ py: 1.5, display: "flex", flexDirection: { xs: "column", md: "row" }, alignItems: { xs: "stretch", md: "center" }, justifyContent: "space-between", gap: 1.5, "&:last-child": { pb: 1.5 } }}>
+          <Stack direction="row" spacing={1.25} alignItems="center">
+            <GitFork size={19} />
+            <Box>
+              <Typography variant="h3">Query 到最终证据的召回链路</Typography>
+              <Typography variant="caption" color="text.secondary">目标配置视图 · 已接入能力与待接入模块分开标记</Typography>
+            </Box>
+          </Stack>
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Chip size="small" color="success" label="EB 已声明" />
+            <Chip size="small" color={sdbAvailable ? "success" : "default"} variant={sdbAvailable ? "filled" : "outlined"} label={sdbAvailable ? "SDB 可查询" : "SDB 待挂载"} />
+            <Chip size="small" variant="outlined" label="编排待接入 Trace" />
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Box sx={{ maxWidth: 1100, width: "100%", mx: "auto" }}>
+        <PipelineNode step="01" title="原始 Query" subtitle="保留用户原始意图，作为改写和回退基线" status="planned">
+          <TextField fullWidth size="small" defaultValue="FUS 蛋白与应激颗粒形成有什么关系？" InputProps={{ readOnly: true }} inputProps={{ "aria-label": "原始 Query 示例" }} />
+          <Stack direction="row" spacing={0.75} mt={1.25} flexWrap="wrap">
+            <Chip size="small" variant="outlined" label="trace.original_query" />
+            <Chip size="small" variant="outlined" label="lang: zh-CN" />
+          </Stack>
+        </PipelineNode>
+
+        <PipelineConnector label="memory context" />
+
+        <PipelineNode step="02" title="Memory 检索" subtitle="召回用户偏好、会话事实与历史实体" status="planned">
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.25}>
+            <Box><Typography variant="caption" fontWeight={800}>启用 Memory 上下文</Typography><Typography variant="caption" color="text.secondary" display="block">仅把相关记忆送入 Query Rewrite</Typography></Box>
+            <Switch checked={memoryEnabled} onChange={(event) => setMemoryEnabled(event.target.checked)} inputProps={{ "aria-label": "启用 Memory 上下文" }} />
+          </Stack>
+          <OutputLine label="检索范围" value="session · user profile · long-term facts" />
+          <OutputLine label="Top K" value="5" />
+          <OutputLine label="输出" value={memoryEnabled ? "memory_items[] + memory_score" : "disabled"} accent={memoryEnabled} />
+        </PipelineNode>
+
+        <PipelineConnector label="rewrite context" />
+
+        <PipelineNode step="03" title="Query Rewrite / Expansion" subtitle="基于原始问题和 Memory 生成多路检索表达" status="planned">
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.25}>
+            <Typography variant="caption" fontWeight={800}>生成扩展 Query</Typography>
+            <Switch checked={expansionEnabled} onChange={(event) => setExpansionEnabled(event.target.checked)} inputProps={{ "aria-label": "生成扩展 Query" }} />
+          </Stack>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 1 }}>
+            {[
+              ["原始 Query", "FUS 蛋白与应激颗粒形成有什么关系？"],
+              ["Memory 增强 Query", memoryEnabled ? "结合用户关注的 LLPS 机制，检索 FUS 与 stress granule 形成证据" : "Memory 未启用"],
+              ["关键词 / 实体 Query", expansionEnabled ? "FUS OR TLS · stress granule · LLPS" : "Expansion 未启用"],
+            ].map(([label, value]) => (
+              <Box key={label} sx={{ p: 1.4, border: "1px solid", borderColor: "divider", borderRadius: 1.25, minWidth: 0 }}>
+                <Typography variant="caption" color="text.secondary">{label}</Typography>
+                <Typography variant="caption" display="block" mt={0.6} fontWeight={700} sx={{ lineHeight: 1.6 }}>{value}</Typography>
+              </Box>
+            ))}
+          </Box>
+          <Stack direction="row" spacing={0.75} mt={1.25} flexWrap="wrap">
+            <Chip size="small" variant="outlined" label="trace.rewritten_query" />
+            <Chip size="small" variant="outlined" label="trace.expanded_queries[]" />
+          </Stack>
+        </PipelineNode>
+
+        <PipelineConnector label="parallel fan-out" />
+
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" }, gap: 2, position: "relative" }}>
+          <PipelineNode step="04A" title="EB Dense Retrieval" subtitle="Embedding 双塔语义召回" status="declared">
+            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.25}>
+              <Typography variant="caption" fontWeight={800}>Dense 通道</Typography>
+              <Switch checked={denseEnabled} onChange={(event) => setDenseEnabled(event.target.checked)} inputProps={{ "aria-label": "启用 Dense 召回" }} />
+            </Stack>
+            <OutputLine label="数据源" value="Evidence Base · /mnt/vector-db" />
+            <OutputLine label="Embedding" value="Qwen3-VL-Embedding-2B" />
+            <OutputLine label="Top K" value="50" />
+            <OutputLine label="Trace" value="dense_score · dense_rank · chunk_id" accent />
+          </PipelineNode>
+
+          <PipelineNode step="04B" title="SDB FTS5 Keyword Retrieval" subtitle="关键词、实体与别名倒排召回" status={sdbAvailable ? "ready" : "declared"}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.25}>
+              <Typography variant="caption" fontWeight={800}>Keyword 通道</Typography>
+              <Switch checked={keywordEnabled} onChange={(event) => setKeywordEnabled(event.target.checked)} inputProps={{ "aria-label": "启用关键词召回" }} />
+            </Stack>
+            <OutputLine label="数据源" value="Source DB v2 · SQLite FTS5" />
+            <OutputLine label="查询表达式" value="FUS OR TLS · stress granule · LLPS" />
+            <OutputLine label="Top K" value="50" />
+            <OutputLine label="Trace" value="bm25_score · keyword_rank · record_id" accent />
+          </PipelineNode>
+        </Box>
+
+        <PipelineConnector label="merge candidates" />
+
+        <PipelineNode step="05" title="RRF 融合" subtitle="跨通道按排名融合，避免直接相加不同尺度的分数" status="planned">
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "stretch", sm: "center" }} mb={1.5}>
+            <Select size="small" value={fusionMethod} onChange={(event) => setFusionMethod(event.target.value)} inputProps={{ "aria-label": "融合方法" }} sx={{ minWidth: 190 }}>
+              <MenuItem value="rrf">RRF 排名融合</MenuItem>
+              <MenuItem value="weighted">归一化加权</MenuItem>
+            </Select>
+            <Chip size="small" variant="outlined" label="k = 60" />
+            <Chip size="small" variant="outlined" label={`输入通道 ${Number(denseEnabled) + Number(keywordEnabled)}`} />
+          </Stack>
+          <Box sx={{ ...MONO_SX, px: 1.5, py: 1.2, bgcolor: "action.hover", border: "1px solid", borderColor: "divider", borderRadius: 1.25, fontSize: 11, overflowWrap: "anywhere" }}>
+            {fusionMethod === "rrf" ? "RRF(d) = Σ 1 / (60 + rank_i(d))" : "score(d) = w_dense × norm(dense) + w_keyword × norm(BM25)"}
+          </Box>
+          <OutputLine label="去重键" value="canonical_id → document_id → chunk_id" />
+          <OutputLine label="输出" value="fused_candidates[100] · fused_score · fused_rank" accent />
+        </PipelineNode>
+
+        <PipelineConnector label="top candidates" />
+
+        <PipelineNode step="06" title="Reranker" subtitle="对融合候选进行 Query-Document 相关性重排" status="planned">
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.25}>
+            <Box><Typography variant="caption" fontWeight={800}>Cross-Encoder 重排</Typography><Typography variant="caption" color="text.secondary" display="block">融合 Top 100 → 最终 Top 10</Typography></Box>
+            <Switch checked={rerankerEnabled} onChange={(event) => setRerankerEnabled(event.target.checked)} inputProps={{ "aria-label": "启用 Reranker" }} />
+          </Stack>
+          <OutputLine label="模型" value="待配置" />
+          <OutputLine label="输入" value="rewritten_query + candidate_text" />
+          <OutputLine label="最终输出" value={rerankerEnabled ? "rerank_score · final_rank · evidence[10]" : "按 fused_rank 输出"} accent />
+        </PipelineNode>
+      </Box>
+
+      <Card sx={PANEL_SX}>
+        <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Typography variant="h3">Trace 应记录的阶段数据</Typography>
+          <Typography variant="caption" color="text.secondary">用于定位 Query 改写、召回、融合或重排中的质量损失</Typography>
+        </Box>
+        <TableContainer>
+          <Table size="small">
+            <TableHead><TableRow>{["阶段", "输入", "输出", "核心指标"].map((heading) => <TableCell key={heading} sx={{ fontSize: 10, fontWeight: 800 }}>{heading}</TableCell>)}</TableRow></TableHead>
+            <TableBody>
+              {[
+                ["Memory", "original_query · user/session", "memory_items[]", "hit_count · score · latency_ms"],
+                ["Rewrite", "query + memory", "rewritten/expanded queries", "rewrite_latency · fallback_reason"],
+                ["Dense", "dense_query", "EB chunks", "dense_score · rank · latency_ms"],
+                ["Keyword", "entity/keyword query", "SDB records", "BM25 score · rank · latency_ms"],
+                ["Fusion", "all candidate lists", "fused candidates", "RRF score · fused_rank · duplicate_count"],
+                ["Reranker", "query + candidates", "final evidence", "rerank_score · final_rank · latency_ms"],
+              ].map((row) => <TableRow key={row[0]}>{row.map((cell, index) => <TableCell key={cell} sx={{ ...(index > 0 ? MONO_SX : {}), fontSize: index > 0 ? 10 : 11, fontWeight: index === 0 ? 800 : 500 }}>{cell}</TableCell>)}</TableRow>)}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
+    </Stack>
+  );
+}
+
 function Runtime({ project }: { project: PhaseAgentProject }) {
   const runtimeRows = [
     ["Image", project.image.name],
@@ -732,6 +943,7 @@ export default function AgentProject() {
   const page = useMemo(() => {
     if (!project) return null;
     if (activeView === "overview") return <Overview project={project} />;
+    if (activeView === "retrieval") return <RetrievalPipeline project={project} />;
     if (activeView === "files") return <Card sx={PANEL_SX}><FileTable files={project.mainFiles} /></Card>;
     if (activeView === "resources") return <Resources project={project} />;
     if (activeView === "skills") return <SkillsView project={project} />;
