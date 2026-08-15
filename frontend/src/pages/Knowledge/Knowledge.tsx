@@ -1,17 +1,16 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Card,
   CardContent,
   Chip,
-  CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
   Divider,
   IconButton,
-  LinearProgress,
   MenuItem,
   Paper,
   Select,
@@ -27,145 +26,161 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import {
-  Database,
-  Dices,
-  Eye,
-  FileText,
-  Image,
-  RefreshCw,
-  Split,
-  Upload,
-  WandSparkles,
-  X,
-} from "lucide-react";
+import { Database, FileText, RefreshCw, Search, Split, WandSparkles, X } from "lucide-react";
 import DocumentStageDetails from "./DocumentStageDetails";
+import { normalizeSampleSize } from "./Knowledge.data";
 import { knowledgeApi } from "../../services/api";
-import {
-  DEFAULT_SAMPLE_SIZE,
-  getSamplingProgress,
-  KNOWLEDGE_DOCUMENTS,
-  normalizeSampleSize,
-} from "./Knowledge.data";
 import type { KnowledgeDocument } from "./Knowledge.data";
 
-const PDF_STAGES = [
-  { id: "overview", icon: FileText, label: "文档概览" },
-  { id: "parsing", icon: WandSparkles, label: "解析与清洗" },
-  { id: "chunking", icon: Split, label: "分块预览" },
-  { id: "multimodal", icon: Image, label: "多模态解析" },
-] as const;
-
-type PdfStage = (typeof PDF_STAGES)[number]["id"];
-
-type SampleRun = {
-  status: "idle" | "running" | "completed" | "failed";
-  completed: number;
-  total: number;
-  error: string | null;
+type KnowledgeStats = {
+  totalDocuments: number;
+  totalChunks: number;
+  currentIndex: string;
+  lastSync: string;
+  databaseType?: string;
+  sqliteSize?: string;
+  aliasCount?: number;
 };
 
+type DetailStage = "overview" | "records" | "chunking" | "raw";
+
+const DETAIL_STAGES: Array<{ id: DetailStage; label: string; icon: typeof FileText }> = [
+  { id: "overview", label: "概览", icon: FileText },
+  { id: "records", label: "抽样记录", icon: WandSparkles },
+  { id: "chunking", label: "分块配置", icon: Split },
+  { id: "raw", label: "原始 JSON", icon: Database },
+];
+
+function mapDocument(item: Record<string, any>): KnowledgeDocument {
+  return {
+    id: Number(item.id ?? 0),
+    name: String(item.fileName || item.title || item.sourceDatabase || "unknown"),
+    source: String(item.category || item.sourcePath || item.sourceDatabase || "-"),
+    parser: String(item.parserVersion || item.parserName || "-"),
+    chunks: Number(item.recordCount ?? item.chunkCount ?? 0),
+    duplicateStatus: String(item.evidenceClass || item.dedupStatus || "-"),
+    ingestStatus: String(item.processStatus || "INGESTED"),
+    updatedAt: String(item.snapshotRelease || item.updatedAt || "-"),
+    previewStatus: "not-mounted",
+    sourceDatabase: String(item.sourceDatabase || item.sourcePath || ""),
+    title: String(item.title || item.fileName || ""),
+    description: String(item.description || ""),
+    category: String(item.category || ""),
+    defaultEntityType: String(item.defaultEntityType || ""),
+    evidenceClass: String(item.evidenceClass || ""),
+    homepage: String(item.homepage || ""),
+    license: String(item.license || ""),
+    snapshotRelease: String(item.snapshotRelease || ""),
+    parserVersion: String(item.parserVersion || item.parserName || ""),
+    recordCount: Number(item.recordCount ?? item.chunkCount ?? 0),
+    sourceFileCount: Number(item.sourceFileCount ?? item.pageCount ?? 1),
+    sampleRecords: Array.isArray(item.sampleRecords) ? item.sampleRecords : undefined,
+  };
+}
+
+function unwrapDocuments(data: unknown): Record<string, any>[] {
+  if (Array.isArray(data)) return data as Record<string, any>[];
+  if (data && typeof data === "object" && Array.isArray((data as { content?: unknown }).content)) {
+    return (data as { content: Record<string, any>[] }).content;
+  }
+  return [];
+}
+
 export default function Knowledge() {
+  const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
+  const [stats, setStats] = useState<KnowledgeStats | null>(null);
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
-  const [pdfStage, setPdfStage] = useState<PdfStage>("overview");
-  const [sampleSizeInput, setSampleSizeInput] = useState(String(DEFAULT_SAMPLE_SIZE));
-  const [sampleFeedbackOpen, setSampleFeedbackOpen] = useState(false);
-  const [sampleRun, setSampleRun] = useState<SampleRun>({
-    status: "idle",
-    completed: 0,
-    total: DEFAULT_SAMPLE_SIZE,
-    error: null,
-  });
+  const [stage, setStage] = useState<DetailStage>("overview");
+  const [queryInput, setQueryInput] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [fileTypeFilter, setFileTypeFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [sampleSizeInput, setSampleSizeInput] = useState("10");
 
-  const sampleProgress = getSamplingProgress(sampleRun.completed, sampleRun.total);
-  const sampling = sampleRun.status === "running";
+  const loadKnowledge = async (keyword = queryInput) => {
+    setLoading(true);
+    try {
+      const [docsResponse, statsResponse] = await Promise.all([
+        knowledgeApi.listDocuments({
+          keyword,
+          status: statusFilter === "all" ? "" : statusFilter,
+          fileType: fileTypeFilter === "all" ? "" : fileTypeFilter,
+          page: "0",
+          size: "50",
+        }),
+        knowledgeApi.getStats(),
+      ]);
+      setDocuments(unwrapDocuments(docsResponse.data).map(mapDocument));
+      setStats(statsResponse.data as KnowledgeStats);
+      setError(null);
+    } catch (exception) {
+      setError("知识库后端未连接，当前页面不会显示真实数据。");
+      setDocuments([]);
+      setStats(null);
+      void exception;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const openDocument = (document: KnowledgeDocument) => {
-    setSelectedDocument(document);
-    setPdfStage("overview");
+  useEffect(() => {
+    void loadKnowledge("");
+  }, []);
+
+  const openDocument = async (document: KnowledgeDocument) => {
+    setDetailLoading(true);
+    try {
+      const response = await knowledgeApi.getDocument(document.id);
+      setSelectedDocument(mapDocument(response.data));
+      setStage("overview");
+    } catch {
+      setSelectedDocument(document);
+      setStage("overview");
+      setError("文档详情加载失败，已使用列表中的摘要数据。");
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const closeDocumentDialog = () => setSelectedDocument(null);
 
-  const runRandomSample = async () => {
-    if (sampling) return;
+  const metrics = useMemo(() => [
+    ["数据源", stats?.totalDocuments ?? 0],
+    ["记录数", stats?.totalChunks ?? 0],
+    ["索引", stats?.currentIndex ?? "-"],
+    ["SQLite", stats?.sqliteSize ?? "-"],
+    ["别名", stats?.aliasCount ?? 0],
+  ] as const, [stats]);
 
-    const total = normalizeSampleSize(sampleSizeInput);
-    setSampleSizeInput(String(total));
-    setSampleFeedbackOpen(false);
-    setSampleRun({ status: "running", completed: 0, total, error: null });
-
-    try {
-      for (let completed = 1; completed <= total; completed += 1) {
-        await knowledgeApi.getSample();
-        setSampleRun({ status: "running", completed, total, error: null });
-      }
-      setSampleRun({ status: "completed", completed: total, total, error: null });
-      setSampleFeedbackOpen(true);
-    } catch {
-      setSampleRun((current) => ({
-        ...current,
-        status: "failed",
-        error: "抽样请求未完成，请检查数据服务后重试。",
-      }));
-    }
-  };
+  const sampleCount = normalizeSampleSize(sampleSizeInput);
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          justifyContent: "space-between",
-          alignItems: { xs: "stretch", sm: "flex-start" },
-          gap: 2,
-          mb: 2.5,
-        }}
-      >
+      <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", sm: "flex-start" }, gap: 2, mb: 2.5 }}>
         <Box>
           <Typography variant="h1">知识库 / phase-db</Typography>
           <Typography variant="body2" color="text.secondary">
-            文档管理与 PDF 粒度处理工作台
+            直接读取后端知识库与 SQLite SDB 内容
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          <Button variant="outlined" size="small" startIcon={<Database size={14} />}>
-            切换知识库
-          </Button>
-          <Button variant="outlined" size="small" startIcon={<RefreshCw size={14} />}>
+          <Button variant="outlined" size="small" startIcon={<RefreshCw size={14} />} onClick={() => void loadKnowledge(queryInput)}>
             同步数据
-          </Button>
-          <Button variant="contained" size="small" startIcon={<Upload size={14} />}>
-            上传文档
           </Button>
         </Box>
       </Box>
 
       <Card sx={{ mb: 2 }}>
-        <CardContent
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: { xs: 1.5, md: 3 },
-            py: 2,
-            overflowX: "auto",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, pr: 3, borderRight: "1px solid", borderColor: "divider", flexShrink: 0 }}>
-            <Database size={22} color="#673ab7" />
-            <Box>
-              <Typography variant="body2" fontWeight={700}>phase-db</Typography>
-              <Typography variant="caption" color="text.secondary">S3 / phase-prod</Typography>
-            </Box>
-          </Box>
-          {[["文档", "18,420"], ["Chunk", "162,804"], ["当前索引", "idx-024"], ["最近同步", "12 分钟前"]].map(([label, value]) => (
-            <Box key={label} sx={{ px: { xs: 1.5, md: 3 }, borderRight: "1px solid", borderColor: "grey.100", flexShrink: 0 }}>
+        <CardContent sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", md: "repeat(5, minmax(0, 1fr))" }, gap: 0, py: 0 }}>
+          {metrics.map(([label, value]) => (
+            <Box key={label} sx={{ p: 2, minWidth: 0, borderRight: { md: "1px solid" }, borderBottom: { xs: "1px solid", md: 0 }, borderColor: "divider" }}>
               <Typography variant="caption" color="text.secondary">{label}</Typography>
-              <Typography variant="body2" fontWeight={700} fontFamily="monospace" mt={0.5}>{value}</Typography>
+              <Typography variant="body2" fontWeight={800} sx={{ mt: 0.5, overflowWrap: "anywhere" }}>{String(value)}</Typography>
             </Box>
           ))}
-          <Chip label="可用" color="success" size="small" />
         </CardContent>
       </Card>
 
@@ -173,23 +188,37 @@ export default function Knowledge() {
         <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
           <Box sx={{ px: 2.5, pt: 2.25, pb: 1.75, display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 2, flexDirection: { xs: "column", md: "row" } }}>
             <Box>
-              <Typography variant="subtitle2" fontWeight={700}>文档列表</Typography>
-              <Typography variant="caption" color="text.secondary">解析、分块和多模态结果按 PDF 独立管理</Typography>
+              <Typography variant="subtitle2" fontWeight={700}>数据源列表</Typography>
+              <Typography variant="caption" color="text.secondary">当前读取 `source_metadata` 与 `sources` 表中的真实知识库来源</Typography>
             </Box>
             <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
-              {["原文", "解析清洗", "分块", "多模态"].map((label) => (
-                <Chip key={label} label={label} size="small" variant="outlined" />
-              ))}
+              <Chip label="sources" size="small" variant="outlined" />
+              <Chip label="source_metadata" size="small" variant="outlined" />
+              <Chip label={loading ? "加载中" : `${documents.length} sources`} size="small" color="success" />
             </Box>
           </Box>
           <Divider />
           <Box sx={{ display: "flex", gap: 1, p: 2, flexWrap: { xs: "wrap", md: "nowrap" } }}>
-            <TextField size="small" placeholder="搜索文件名、标签或来源" sx={{ flex: 1, minWidth: { xs: "100%", md: 240 } }} />
-            <Select size="small" defaultValue="all" sx={{ bgcolor: "background.paper", minWidth: 112 }}>
+            <TextField
+              size="small"
+              placeholder="搜索源数据库、类别、许可证或描述"
+              value={queryInput}
+              onChange={(event) => setQueryInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  void loadKnowledge(queryInput);
+                }
+              }}
+              sx={{ flex: 1, minWidth: { xs: "100%", md: 280 } }}
+              InputProps={{ startAdornment: <Search size={14} style={{ marginRight: 8, opacity: 0.7 }} /> }}
+            />
+            <Select size="small" value={fileTypeFilter} onChange={(event) => setFileTypeFilter(event.target.value)} sx={{ bgcolor: "background.paper", minWidth: 144 }}>
               <MenuItem value="all">全部类型</MenuItem>
+              <MenuItem value="SDB_SOURCE">SDB_SOURCE</MenuItem>
             </Select>
-            <Select size="small" defaultValue="all" sx={{ bgcolor: "background.paper", minWidth: 112 }}>
+            <Select size="small" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} sx={{ bgcolor: "background.paper", minWidth: 144 }}>
               <MenuItem value="all">全部状态</MenuItem>
+              <MenuItem value="INGESTED">INGESTED</MenuItem>
             </Select>
             <Box sx={{ height: 40, display: "flex", alignItems: "center", gap: 0.75, pl: 1.25, pr: 0.75, border: "1px solid", borderColor: "divider", borderRadius: 2.5, bgcolor: "background.paper" }}>
               <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>抽样数</Typography>
@@ -198,10 +227,9 @@ export default function Knowledge() {
                 size="small"
                 variant="standard"
                 value={sampleSizeInput}
-                disabled={sampling}
                 onChange={(event) => setSampleSizeInput(event.target.value)}
                 onBlur={() => setSampleSizeInput(String(normalizeSampleSize(sampleSizeInput)))}
-                inputProps={{ min: 1, step: 1, inputMode: "numeric", "aria-label": "随机抽样数量" }}
+                inputProps={{ min: 1, step: 1, inputMode: "numeric" }}
                 InputProps={{ disableUnderline: true, endAdornment: <Typography variant="caption" color="text.secondary">个</Typography> }}
                 sx={{ width: 72, bgcolor: "background.paper", "& input": { py: 1, px: 0.25, textAlign: "right", fontSize: 12, fontWeight: 700 } }}
               />
@@ -209,64 +237,38 @@ export default function Knowledge() {
             <Button
               size="small"
               variant="outlined"
-              startIcon={sampling ? <CircularProgress size={14} color="inherit" /> : <Dices size={14} />}
-              disabled={sampling}
-              onClick={() => void runRandomSample()}
-              sx={{ minWidth: 124 }}
+              startIcon={<Database size={14} />}
+              onClick={() => {
+                setFeedbackOpen(true);
+                setQueryInput("");
+                void loadKnowledge("");
+              }}
             >
-              {sampling ? `抽样中 ${sampleProgress}%` : "随机抽样"}
+              重新抽样
             </Button>
           </Box>
-          {sampleRun.status !== "idle" && (
-            <Box
-              role="status"
-              aria-live="polite"
-              sx={{ px: 2, pb: 1.75 }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, mb: 0.75 }}>
-                <Typography variant="caption" color={sampleRun.status === "failed" ? "error.main" : "text.secondary"}>
-                  {sampleRun.status === "running" && `正在随机抽样 · ${sampleRun.completed} / ${sampleRun.total}`}
-                  {sampleRun.status === "completed" && `随机抽样完成 · ${sampleRun.completed} / ${sampleRun.total}`}
-                  {sampleRun.status === "failed" && `随机抽样中断 · ${sampleRun.completed} / ${sampleRun.total}`}
-                </Typography>
-                <Typography variant="caption" fontFamily="monospace" fontWeight={700} color={sampleRun.status === "failed" ? "error.main" : sampleRun.status === "completed" ? "success.main" : "primary.main"}>
-                  {sampleProgress}%
-                </Typography>
-              </Box>
-              <LinearProgress
-                variant="determinate"
-                value={sampleProgress}
-                color={sampleRun.status === "failed" ? "error" : sampleRun.status === "completed" ? "success" : "primary"}
-                sx={{ height: 5, borderRadius: 2.5 }}
-              />
-              {sampleRun.error && (
-                <Typography variant="caption" color="error.main" sx={{ display: "block", mt: 0.75 }}>
-                  {sampleRun.error}
-                </Typography>
-              )}
-            </Box>
-          )}
+          {error && <Alert severity="warning" sx={{ mx: 2, mb: 2 }}>{error}</Alert>}
           <Box sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 900 }}>
+            <Table size="small" sx={{ minWidth: 1000 }}>
               <TableHead>
                 <TableRow>
-                  {["文档", "来源", "解析器", "Chunk", "原文", "去重", "状态", "更新时间"].map((heading) => (
+                  {["数据源", "类别", "解析器", "记录数", "源文件", "证据", "状态", "更新时间"].map((heading) => (
                     <TableCell key={heading} sx={{ fontSize: 11, fontWeight: 600 }}>{heading}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {KNOWLEDGE_DOCUMENTS.map((document) => (
+                {documents.map((document) => (
                   <TableRow
-                    key={document.name}
+                    key={document.id}
                     hover
                     tabIndex={0}
-                    aria-label={`打开 ${document.name} PDF 工作台`}
-                    onClick={() => openDocument(document)}
+                    aria-label={`打开 ${document.name} 知识源`}
+                    onClick={() => void openDocument(document)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        openDocument(document);
+                        void openDocument(document);
                       }
                     }}
                     sx={{ cursor: "pointer", "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: -2 } }}
@@ -274,26 +276,24 @@ export default function Knowledge() {
                     <TableCell sx={{ fontSize: 11, fontWeight: 600 }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
                         <FileText size={14} />
-                        <Typography component="span" variant="body2" fontSize={11} fontWeight={700} sx={{ flex: 1 }}>{document.name}</Typography>
-                        <Tooltip title="打开 PDF 工作台">
-                          <IconButton size="small" aria-label={`打开 ${document.name} PDF 工作台`} sx={{ color: "primary.main" }}>
-                            <Eye size={14} />
+                        <Typography component="span" variant="body2" fontSize={11} fontWeight={700} sx={{ flex: 1, overflowWrap: "anywhere" }}>
+                          {document.name}
+                        </Typography>
+                        <Tooltip title="打开知识源详情">
+                          <IconButton size="small" aria-label={`打开 ${document.name} 知识源`} sx={{ color: "primary.main" }}>
+                            <Search size={14} />
                           </IconButton>
                         </Tooltip>
                       </Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5, overflowWrap: "anywhere" }}>
+                        {document.sourceDatabase}
+                      </Typography>
                     </TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>{document.source}</TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>{document.parser}</TableCell>
-                    <TableCell sx={{ fontSize: 11, fontFamily: "monospace" }}>{document.chunks}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={document.previewStatus === "available" ? "可预览" : "未挂载"}
-                        color={document.previewStatus === "available" ? "success" : "default"}
-                        size="small"
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell><Chip label={document.duplicateStatus} color="success" size="small" /></TableCell>
+                    <TableCell sx={{ fontSize: 11 }}>{document.category || document.source}</TableCell>
+                    <TableCell sx={{ fontSize: 11 }}>{document.parserVersion || document.parser}</TableCell>
+                    <TableCell sx={{ fontSize: 11, fontFamily: "monospace" }}>{Number(document.recordCount ?? document.chunks).toLocaleString()}</TableCell>
+                    <TableCell sx={{ fontSize: 11, fontFamily: "monospace" }}>{Number(document.sourceFileCount ?? 1).toLocaleString()}</TableCell>
+                    <TableCell><Chip label={document.evidenceClass || document.duplicateStatus} color="success" size="small" /></TableCell>
                     <TableCell><Chip label={document.ingestStatus} color="success" size="small" /></TableCell>
                     <TableCell sx={{ fontSize: 11 }}>{document.updatedAt}</TableCell>
                   </TableRow>
@@ -309,7 +309,7 @@ export default function Knowledge() {
         onClose={closeDocumentDialog}
         maxWidth="xl"
         fullWidth
-        aria-labelledby="pdf-workbench-title"
+        aria-labelledby="knowledge-source-title"
         PaperProps={{
           sx: {
             m: { xs: 1, sm: 2.5 },
@@ -321,133 +321,77 @@ export default function Knowledge() {
       >
         {selectedDocument && (
           <>
-            <DialogTitle id="pdf-workbench-title" sx={{ px: { xs: 2, sm: 2.5 }, py: 1.5, display: "flex", alignItems: "center", gap: 1.25 }}>
+            <DialogTitle id="knowledge-source-title" sx={{ px: { xs: 2, sm: 2.5 }, py: 1.5, display: "flex", alignItems: "center", gap: 1.25 }}>
               <Box sx={{ width: 36, height: 36, display: "grid", placeItems: "center", bgcolor: "action.hover", border: "1px solid", borderColor: "divider", borderRadius: 1.5, flexShrink: 0 }}>
-                <FileText size={18} color="#673ab7" />
+                <Database size={18} color="#673ab7" />
               </Box>
               <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography variant="h3" sx={{ overflowWrap: "anywhere" }}>{selectedDocument.name}</Typography>
-                <Typography variant="caption" color="text.secondary">PDF 工作台 · {selectedDocument.source}</Typography>
+                <Typography variant="h3" sx={{ overflowWrap: "anywhere" }}>{selectedDocument.title || selectedDocument.name}</Typography>
+                <Typography variant="caption" color="text.secondary">后端知识源 · {selectedDocument.sourceDatabase || selectedDocument.source}</Typography>
               </Box>
-              <Chip label={`${selectedDocument.chunks} Chunks`} size="small" color="primary" sx={{ display: { xs: "none", sm: "inline-flex" } }} />
+              <Chip label={`${Number(selectedDocument.recordCount ?? selectedDocument.chunks).toLocaleString()} records`} size="small" color="primary" sx={{ display: { xs: "none", sm: "inline-flex" } }} />
               <Chip label={selectedDocument.ingestStatus} size="small" color="success" sx={{ display: { xs: "none", sm: "inline-flex" } }} />
               <Tooltip title="关闭">
-                <IconButton aria-label="关闭 PDF 工作台" onClick={closeDocumentDialog}>
+                <IconButton aria-label="关闭知识源详情" onClick={closeDocumentDialog}>
                   <X size={18} />
                 </IconButton>
               </Tooltip>
             </DialogTitle>
             <Divider />
-            <DialogContent sx={{ p: 0, flex: 1, overflow: "hidden", display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1.12fr) minmax(420px, 0.88fr)" }, gridTemplateRows: { xs: "minmax(220px, 42%) minmax(0, 58%)", lg: "minmax(0, 1fr)" }, minHeight: 0 }}>
+            <DialogContent sx={{ p: 0, flex: 1, overflow: "hidden", display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1.12fr) minmax(420px, 0.88fr)" }, gridTemplateRows: { xs: "minmax(220px, 34%) minmax(0, 66%)", lg: "minmax(0, 1fr)" }, minHeight: 0 }}>
               <Box sx={{ minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", bgcolor: "grey.100", borderRight: { lg: "1px solid" }, borderBottom: { xs: "1px solid", lg: 0 }, borderColor: "divider" }}>
                 <Box sx={{ minHeight: 48, px: 2, py: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, bgcolor: "background.paper", borderBottom: "1px solid", borderColor: "divider" }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Eye size={15} />
-                    <Typography variant="body2" fontWeight={700}>原始 PDF</Typography>
+                    <Database size={15} />
+                    <Typography variant="body2" fontWeight={700}>后端知识源</Typography>
                   </Box>
-                  <Chip
-                    label={selectedDocument.previewStatus === "available" ? "完整文件" : "文件未挂载"}
-                    size="small"
-                    color={selectedDocument.previewStatus === "available" ? "success" : "default"}
-                    variant="outlined"
-                  />
+                  <Chip label={loading || detailLoading ? "读取中" : "实时后端"} size="small" color="success" variant="outlined" />
                 </Box>
                 <Box sx={{ flex: 1, minHeight: 0, p: { xs: 1.25, sm: 2 }, display: "grid" }}>
-                  {selectedDocument.previewUrl ? (
-                    <Box
-                      component="iframe"
-                      src={selectedDocument.previewUrl}
-                      title={`${selectedDocument.name} 原始 PDF`}
-                      sx={{ width: "100%", height: "100%", minHeight: { xs: 200, lg: 560 }, border: "1px solid", borderColor: "divider", borderRadius: 1, bgcolor: "background.paper" }}
-                    />
-                  ) : (
-                    <Paper
-                      variant="outlined"
-                      sx={{ minHeight: { xs: 200, lg: 520 }, display: "grid", placeItems: "center", textAlign: "center", p: 4, bgcolor: "background.paper", borderStyle: "dashed" }}
-                    >
-                      <Box sx={{ maxWidth: 300 }}>
-                        <Box sx={{ width: 54, height: 66, mx: "auto", mb: 2, display: "grid", placeItems: "center", border: "1px solid", borderColor: "divider", borderRadius: 1.5, bgcolor: "action.hover" }}>
-                          <FileText size={26} color="#673ab7" />
+                  <Paper variant="outlined" sx={{ minHeight: { xs: 200, lg: 520 }, p: 2, bgcolor: "background.paper" }}>
+                    <Typography variant="caption" color="text.secondary">源路径</Typography>
+                    <Typography variant="body2" sx={{ mt: 0.5, fontFamily: "monospace", overflowWrap: "anywhere" }}>{selectedDocument.sourceDatabase || selectedDocument.source}</Typography>
+                    <Divider sx={{ my: 1.5 }} />
+                    <Typography variant="caption" color="text.secondary">描述</Typography>
+                    <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-wrap", lineHeight: 1.75 }}>{selectedDocument.description || "-"}</Typography>
+                    <Divider sx={{ my: 1.5 }} />
+                    <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
+                      {[
+                        ["Category", selectedDocument.category || "-"],
+                        ["Evidence", selectedDocument.evidenceClass || "-"],
+                        ["Parser", selectedDocument.parserVersion || selectedDocument.parser],
+                        ["License", selectedDocument.license || "-"],
+                      ].map(([label, value]) => (
+                        <Box key={label} sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.25, bgcolor: "grey.50" }}>
+                          <Typography variant="caption" color="text.secondary">{label}</Typography>
+                          <Typography variant="body2" fontWeight={700} sx={{ overflowWrap: "anywhere" }}>{value}</Typography>
                         </Box>
-                        <Typography variant="subtitle2" fontWeight={700}>完整 PDF 尚未挂载</Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75, overflowWrap: "anywhere" }}>
-                          {selectedDocument.source}/{selectedDocument.name}
-                        </Typography>
-                      </Box>
-                    </Paper>
-                  )}
+                      ))}
+                    </Box>
+                  </Paper>
                 </Box>
               </Box>
 
               <Box sx={{ minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column", bgcolor: "background.paper" }}>
-                <Tabs
-                  value={pdfStage}
-                  onChange={(_, value: PdfStage) => setPdfStage(value)}
-                  variant="scrollable"
-                  scrollButtons="auto"
-                  aria-label="PDF 处理阶段"
-                  sx={{ px: 1, minHeight: 49, borderBottom: "1px solid", borderColor: "divider", flexShrink: 0 }}
-                >
-                  {PDF_STAGES.map((stage) => (
-                    <Tab key={stage.id} value={stage.id} icon={<stage.icon size={15} />} iconPosition="start" label={stage.label} sx={{ minHeight: 48, minWidth: "auto", px: 1.5, fontSize: 12 }} />
+                <Tabs value={stage} onChange={(_, value: DetailStage) => setStage(value)} variant="scrollable" scrollButtons="auto" aria-label="知识源处理阶段" sx={{ px: 1, minHeight: 49, borderBottom: "1px solid", borderColor: "divider", flexShrink: 0 }}>
+                  {DETAIL_STAGES.map((item) => (
+                    <Tab key={item.id} value={item.id} icon={<item.icon size={15} />} iconPosition="start" label={item.label} sx={{ minHeight: 48, minWidth: "auto", px: 1.5, fontSize: 12 }} />
                   ))}
                 </Tabs>
-
                 <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", p: { xs: 2, sm: 2.5 } }}>
-                  {pdfStage === "overview" && (
-                    <Box>
-                      <Typography variant="subtitle2" fontWeight={700} mb={1.5}>文档概览</Typography>
-                      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, border: "1px solid", borderColor: "divider", borderRadius: 2, overflow: "hidden" }}>
-                        {[
-                          ["文档", selectedDocument.name],
-                          ["来源", selectedDocument.source],
-                          ["解析器", selectedDocument.parser],
-                          ["Chunk", selectedDocument.chunks.toLocaleString()],
-                          ["去重", selectedDocument.duplicateStatus],
-                          ["状态", selectedDocument.ingestStatus],
-                          ["更新时间", selectedDocument.updatedAt],
-                          ["原文", selectedDocument.previewStatus === "available" ? "完整 PDF" : "未挂载"],
-                        ].map(([label, value], index) => (
-                          <Box key={label} sx={{ minWidth: 0, px: 2, py: 1.75, borderRight: { sm: index % 2 === 0 ? "1px solid" : 0 }, borderBottom: { xs: index < 7 ? "1px solid" : 0, sm: index < 6 ? "1px solid" : 0 }, borderColor: "divider" }}>
-                            <Typography variant="caption" color="text.secondary">{label}</Typography>
-                            <Typography variant="body2" fontWeight={700} mt={0.5} sx={{ overflowWrap: "anywhere", fontFamily: label === "Chunk" ? "monospace" : "inherit" }}>{value}</Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                      <Typography variant="subtitle2" fontWeight={700} mt={2.5} mb={1.25}>处理进度</Typography>
-                      <Box sx={{ display: "grid", gap: 1 }}>
-                        {[
-                          ["解析与清洗", selectedDocument.parser, "已完成"],
-                          ["分块", `${selectedDocument.chunks} 个 Chunk`, "已完成"],
-                          ["多模态解析", "文本 / 图片 / 表格", "待复核"],
-                        ].map(([label, detail, status]) => (
-                          <Paper key={label} variant="outlined" sx={{ p: 1.5, display: "flex", alignItems: "center", gap: 1.25 }}>
-                            <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: status === "已完成" ? "success.main" : "warning.main", flexShrink: 0 }} />
-                            <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography variant="body2" fontWeight={700}>{label}</Typography>
-                              <Typography variant="caption" color="text.secondary">{detail}</Typography>
-                            </Box>
-                            <Chip label={status} size="small" color={status === "已完成" ? "success" : "warning"} variant="outlined" />
-                          </Paper>
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-
-                  {pdfStage !== "overview" && (
-                    <DocumentStageDetails key={selectedDocument.name} document={selectedDocument} stage={pdfStage} />
-                  )}
+                  <DocumentStageDetails key={selectedDocument.id} document={selectedDocument} stage={stage} />
                 </Box>
               </Box>
             </DialogContent>
           </>
         )}
       </Dialog>
+
       <Snackbar
-        open={sampleFeedbackOpen}
-        autoHideDuration={2600}
-        onClose={() => setSampleFeedbackOpen(false)}
-        message={`已创建随机抽样 · ${normalizeSampleSize(sampleSizeInput)} 个文档`}
+        open={feedbackOpen}
+        autoHideDuration={2200}
+        onClose={() => setFeedbackOpen(false)}
+        message={`已从真实后端重新抽样 · ${sampleCount} 个记录视图`}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       />
     </Box>

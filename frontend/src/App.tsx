@@ -15,10 +15,12 @@ import AgentProject from "./pages/AgentProject/AgentProject";
 import Settings from "./pages/Settings/Settings";
 
 export default function App() {
+  const baseName = import.meta.env.BASE_URL === "/" ? "/" : import.meta.env.BASE_URL;
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <BrowserRouter>
+      <BrowserRouter basename={baseName}>
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />

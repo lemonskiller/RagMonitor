@@ -9,6 +9,43 @@ export type KnowledgeDocument = {
   updatedAt: string;
   previewStatus: "available" | "not-mounted";
   previewUrl?: string;
+  sourceDatabase?: string;
+  title?: string;
+  description?: string;
+  category?: string;
+  defaultEntityType?: string;
+  evidenceClass?: string;
+  homepage?: string;
+  license?: string;
+  snapshotRelease?: string;
+  parserVersion?: string;
+  recordCount?: number;
+  sourceFileCount?: number;
+  sampleRecords?: KnowledgeSampleRecord[];
+};
+
+export type KnowledgeSampleRecord = {
+  record_id: string;
+  source_database: string;
+  source_file: string;
+  source_row: number | null;
+  entity_type: string | null;
+  primary_name: string | null;
+  aliases: string | null;
+  uniprot_id: string | null;
+  gene_name: string | null;
+  organism: string | null;
+  condensate: string | null;
+  llps_role: string | null;
+  evidence_type: string | null;
+  pmids: string | null;
+  description: string | null;
+  raw_json: string;
+  condensate_tags: string;
+  canonical_id: string;
+  evidence_class: string;
+  evidence_detail: string;
+  schema_version: number;
 };
 
 export type ParsingBlock = {
@@ -284,4 +321,18 @@ const KNOWLEDGE_DOCUMENT_DETAILS: Record<string, KnowledgeDocumentDetails> = {
 
 export function getKnowledgeDocumentDetails(name: string) {
   return KNOWLEDGE_DOCUMENT_DETAILS[name];
+}
+
+export function buildChunksFromSampleRecords(records: KnowledgeSampleRecord[], totalCount?: number): ChunkRecord[] {
+  return records.map((record, index) => ({
+    id: record.record_id,
+    page: index + 1,
+    parentId: record.source_database,
+    position: `${index + 1} / ${totalCount ?? records.length}`,
+    tokens: Math.max(64, Math.round((record.description?.length ?? 0) / 4)),
+    overlap: 0,
+    heading: record.primary_name || record.gene_name || record.entity_type || record.record_id,
+    content: record.description || record.raw_json || "",
+    embeddingStatus: record.evidence_class ? `SDB FTS5 / ${record.evidence_class}` : "SDB FTS5 indexed",
+  }));
 }

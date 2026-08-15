@@ -5,8 +5,10 @@ import type {
   ChunkingJob,
 } from "../pages/Knowledge/chunking";
 
+const API_BASE = new URL("api/", window.location.origin + import.meta.env.BASE_URL).toString();
+
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: API_BASE,
   timeout: 30000,
   headers: { "Content-Type": "application/json" },
 });

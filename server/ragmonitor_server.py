@@ -7,9 +7,10 @@ import re
 import sqlite3
 import subprocess
 import tarfile
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 
 ROOT = Path(os.environ.get("RAGMONITOR_STATIC_ROOT", "/home/wuxinze/others/RagMonitor/dist")).resolve()
@@ -22,6 +23,26 @@ RELEASE_ROOT = Path(
 SDB_SQLITE = Path(
     os.environ.get("PHASEAGENT_SDB_SQLITE", "/home/wuxinze/others/RagMonitor/cache/phaseagent-sdb/source_db_index.sqlite3")
 ).resolve()
+DEFAULT_CHUNKING_CONFIG = {
+    "strategy": "STRUCTURE",
+    "chunkSize": 512,
+    "overlap": 80,
+    "minChunkSize": 120,
+    "maxChunkSize": 800,
+    "preserveHeadings": True,
+    "preserveTables": True,
+    "parentChildEnabled": True,
+    "parentChunkSize": 1200,
+    "tokenizer": "cl100k_base",
+    "separators": "\\n## |\\n### |\\n\\n|\\n|。",
+}
+CHUNKING_CONFIGS: dict[int, dict] = {}
+CHUNKING_JOBS: dict[int, dict] = {}
+NEXT_JOB_ID = 1
+PUBLIC_BASE_PATH = os.environ.get("RAGMONITOR_BASE_PATH", "/agent-monitor").strip()
+if PUBLIC_BASE_PATH and not PUBLIC_BASE_PATH.startswith("/"):
+    PUBLIC_BASE_PATH = f"/{PUBLIC_BASE_PATH}"
+PUBLIC_BASE_PATH = PUBLIC_BASE_PATH.rstrip("/")
 
 
 def format_bytes(value: int | None) -> str:
@@ -276,6 +297,13 @@ def file_payload(path: Path) -> dict:
     }
 
 
+def normalize_public_path(request_path: str) -> str:
+    if PUBLIC_BASE_PATH and request_path.startswith(PUBLIC_BASE_PATH):
+        trimmed = request_path[len(PUBLIC_BASE_PATH) :]
+        return trimmed or "/"
+    return request_path
+
+
 def build_phaseagent_payload() -> dict:
     handoff = read_json(PHASEAGENT_ROOT / "handoff-manifest.json")
     release = read_json(PHASEAGENT_ROOT / "phaseagent-0.6.0.release-manifest.json")
@@ -384,28 +412,275 @@ def build_phaseagent_payload() -> dict:
     }
 
 
+def build_knowledge_document_index() -> list[dict]:
+    rows = sqlite_rows(
+        """
+        select
+            s.source_database,
+            s.title as source_title,
+            s.description as source_description,
+            s.record_count as source_record_count,
+            coalesce(m.category, '') as category,
+            coalesce(m.default_entity_type, '') as default_entity_type,
+            coalesce(m.evidence_class, '') as evidence_class,
+            coalesce(m.homepage, '') as homepage,
+            coalesce(m.license, '') as license,
+            coalesce(m.snapshot_release, '') as snapshot_release,
+            coalesce(m.parser_version, '') as parser_version,
+            coalesce(m.source_file_count, 1) as source_file_count
+        from sources s
+        left join source_metadata m on m.source_database = s.source_database
+        order by s.source_database asc
+        """
+    )
+    sqlite_size = SDB_SQLITE.stat().st_size if SDB_SQLITE.exists() else None
+    items: list[dict] = []
+    for index, row in enumerate(rows, start=1):
+        items.append(
+            {
+                "id": index,
+                "fileName": row.get("source_title") or row["source_database"],
+                "fileType": "SDB_SOURCE",
+                "sourcePath": row["source_database"],
+                "parserName": row.get("parser_version") or "finalize_sdb_v2.py@2",
+                "fileSize": sqlite_size,
+                "pageCount": row.get("source_file_count") or 1,
+                "chunkCount": row.get("source_record_count") or 0,
+                "processStatus": "INGESTED",
+                "dedupStatus": row.get("evidence_class") or "INDEXED",
+                "updatedAt": row.get("snapshot_release") or "",
+                "createdAt": row.get("snapshot_release") or "",
+                "sourceDatabase": row["source_database"],
+                "title": row.get("source_title") or row["source_database"],
+                "description": row.get("source_description") or "",
+                "category": row.get("category") or "",
+                "defaultEntityType": row.get("default_entity_type") or "",
+                "evidenceClass": row.get("evidence_class") or "",
+                "homepage": row.get("homepage") or "",
+                "license": row.get("license") or "",
+                "snapshotRelease": row.get("snapshot_release") or "",
+                "parserVersion": row.get("parser_version") or "",
+                "recordCount": row.get("source_record_count") or 0,
+                "sourceFileCount": row.get("source_file_count") or 1,
+            }
+        )
+    return items
+
+
+def knowledge_document_samples(source_database: str | None = None, limit: int = 10) -> list[dict]:
+    limit = max(1, min(int(limit), 50))
+    select_clause = """
+        select
+            record_id,
+            source_database,
+            source_file,
+            source_row,
+            entity_type,
+            primary_name,
+            aliases,
+            uniprot_id,
+            gene_name,
+            organism,
+            condensate,
+            llps_role,
+            evidence_type,
+            pmids,
+            substr(coalesce(description, ''), 1, 380) as description,
+            raw_json,
+            condensate_tags,
+            canonical_id,
+            evidence_class,
+            evidence_detail,
+            schema_version
+        from records
+    """
+    if source_database:
+        return sqlite_rows(
+            f"{select_clause} where source_database = ? order by abs(random()) limit ?",
+            (source_database, limit),
+        )
+    return sqlite_rows(f"{select_clause} order by abs(random()) limit ?", (limit,))
+
+
+def build_knowledge_document_detail(document_id: int) -> dict | None:
+    doc = next((item for item in build_knowledge_document_index() if item["id"] == document_id), None)
+    if not doc:
+        return None
+    detail = dict(doc)
+    detail["sampleRecords"] = knowledge_document_samples(detail["sourceDatabase"], 10)
+    return detail
+
+
+def build_knowledge_list_response(params: dict[str, list[str]]) -> dict:
+    docs = build_knowledge_document_index()
+    keyword = (params.get("keyword", [""]) or [""])[0].strip().lower()
+    file_type = (params.get("fileType", [""]) or [""])[0].strip().lower()
+    status = (params.get("status", [""]) or [""])[0].strip().lower()
+    page = max(int((params.get("page", ["0"]) or ["0"])[0]), 0)
+    size = max(int((params.get("size", ["20"]) or ["20"])[0]), 1)
+
+    if keyword:
+        docs = [
+            doc
+            for doc in docs
+            if keyword
+            in json.dumps(
+                {
+                    "fileName": doc["fileName"],
+                    "sourcePath": doc["sourcePath"],
+                    "category": doc["category"],
+                    "description": doc["description"],
+                    "homepage": doc["homepage"],
+                    "license": doc["license"],
+                    "parserVersion": doc["parserVersion"],
+                    "sourceDatabase": doc["sourceDatabase"],
+                    "evidenceClass": doc["evidenceClass"],
+                },
+                ensure_ascii=False,
+            ).lower()
+        ]
+    if file_type:
+        docs = [
+            doc
+            for doc in docs
+            if file_type in {str(doc["fileType"]).lower(), str(doc["sourceDatabase"]).lower()}
+        ]
+    if status:
+        docs = [doc for doc in docs if status == str(doc["processStatus"]).lower()]
+
+    docs = sorted(docs, key=lambda item: (-int(item.get("recordCount") or 0), item["sourceDatabase"]))
+    total = len(docs)
+    start = page * size
+    content = docs[start : start + size]
+    return {
+        "content": content,
+        "totalElements": total,
+        "totalPages": (total + size - 1) // size if size else 0,
+        "size": size,
+        "number": page,
+        "numberOfElements": len(content),
+        "first": page == 0,
+        "last": start + size >= total,
+        "empty": total == 0,
+    }
+
+
+def chunking_config_payload(document_id: int) -> dict:
+    config = CHUNKING_CONFIGS.get(document_id, DEFAULT_CHUNKING_CONFIG)
+    latest_job = next(
+        (job for job in sorted(CHUNKING_JOBS.values(), key=lambda item: item["id"], reverse=True) if job["documentId"] == document_id),
+        None,
+    )
+    return {
+        "id": document_id,
+        "documentId": document_id,
+        "versionNumber": 1,
+        "status": "ACTIVE",
+        "createdAt": "2026-08-15T00:00:00Z",
+        "activatedAt": "2026-08-15T00:00:00Z",
+        "latestJob": latest_job,
+        **config,
+    }
+
+
+def create_chunking_job(document_id: int, config: dict) -> dict:
+    global NEXT_JOB_ID
+    CHUNKING_CONFIGS[document_id] = {**DEFAULT_CHUNKING_CONFIG, **config}
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    job = {
+        "id": NEXT_JOB_ID,
+        "documentId": document_id,
+        "configVersionId": document_id,
+        "status": "COMPLETED",
+        "stage": "COMPLETED",
+        "progress": 100,
+        "message": "Prototype deployment applied the chunking configuration.",
+        "errorMessage": None,
+        "createdAt": now,
+        "updatedAt": now,
+        "completedAt": now,
+    }
+    CHUNKING_JOBS[NEXT_JOB_ID] = job
+    NEXT_JOB_ID += 1
+    return job
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path == "/api/health":
+        path = normalize_public_path(parsed.path)
+        if path == "/api/health":
             self.send_json({"status": "ok", "phaseagentRoot": PHASEAGENT_ROOT.as_posix()})
             return
-        if parsed.path == "/api/phaseagent/project":
+        if path == "/api/knowledge/documents":
+            self.send_json(build_knowledge_list_response(parse_qs(parsed.query)))
+            return
+        if path == "/api/knowledge/documents/sample":
+            docs = build_knowledge_document_index()
+            if not docs:
+                self.send_json({"error": "document not found"}, status=404)
+                return
+            self.send_json(build_knowledge_document_detail(docs[0]["id"]) or {"error": "document not found"})
+            return
+        match = re.fullmatch(r"/api/knowledge/documents/(\d+)$", path)
+        if match:
+            detail = build_knowledge_document_detail(int(match.group(1)))
+            self.send_json(detail if detail else {"error": "document not found"}, status=200 if detail else 404)
+            return
+        match = re.fullmatch(r"/api/knowledge/documents/(\d+)/chunking", path)
+        if match:
+            self.send_json(chunking_config_payload(int(match.group(1))))
+            return
+        match = re.fullmatch(r"/api/knowledge/chunking-jobs/(\d+)", path)
+        if match:
+            job = CHUNKING_JOBS.get(int(match.group(1)))
+            self.send_json(job if job else {"error": "job not found"}, status=200 if job else 404)
+            return
+        if path == "/api/knowledge/stats":
+            sqlite_size = SDB_SQLITE.stat().st_size if SDB_SQLITE.exists() else None
+            self.send_json(
+                {
+                    "totalDocuments": len(build_knowledge_document_index()),
+                    "totalChunks": sqlite_rows("select count(*) as count from records")[0]["count"],
+                    "currentIndex": "source_db_index.sqlite3",
+                    "lastSync": "sdb-v2-snapshot-2026-07-20",
+                    "databaseType": "SQLite / FTS5",
+                    "sqliteSize": format_bytes(sqlite_size),
+                    "aliasCount": sqlite_rows("select count(*) as count from aliases")[0]["count"],
+                }
+            )
+            return
+        if path == "/api/phaseagent/project":
             try:
                 self.send_json(build_phaseagent_payload())
             except Exception as exc:
                 self.send_json({"error": str(exc)}, status=500)
             return
-        self.serve_static(parsed.path)
+        self.serve_static(path)
+
+    def do_PUT(self) -> None:
+        parsed = urlparse(self.path)
+        path = normalize_public_path(parsed.path)
+        match = re.fullmatch(r"/api/knowledge/documents/(\d+)/chunking", path)
+        if not match:
+            self.send_json({"error": "not found"}, status=404)
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
+            self.send_json(create_chunking_job(int(match.group(1)), payload))
+        except Exception as exc:
+            self.send_json({"error": str(exc)}, status=400)
 
     def do_HEAD(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path.startswith("/api/"):
+        path = normalize_public_path(parsed.path)
+        if path.startswith("/api/"):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             return
-        self.serve_static(parsed.path, head_only=True)
+        self.serve_static(path, head_only=True)
 
     def send_json(self, payload: dict, status: int = 200) -> None:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
