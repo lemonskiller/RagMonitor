@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Box, ButtonBase, Chip, Divider, Paper, Tooltip, Typography } from "@mui/material";
+import { Box, ButtonBase, Chip, Divider, Paper, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography } from "@mui/material";
 import { Database, FileText, Info, Sigma, Table2, WandSparkles } from "lucide-react";
 import ChunkingWorkbench from "./ChunkingWorkbench";
 import { buildChunksFromSampleRecords } from "./Knowledge.data";
@@ -151,6 +151,60 @@ export default function DocumentStageDetails({ document, stage }: DocumentStageD
               </Typography>
             </Box>
           ))}
+        </Box>
+
+        <Box sx={{ mt: 2, border: "1px solid", borderColor: "divider", borderRadius: 2, overflow: "hidden" }}>
+          <Box sx={{ px: 1.5, py: 1.25, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, bgcolor: "grey.50", borderBottom: "1px solid", borderColor: "divider" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+              <Typography variant="subtitle2" fontWeight={700}>
+                字段统计
+              </Typography>
+              <Tooltip title="缺失统计把 null 和空字符串都算作缺失；非空表示该字段在当前数据源里有实际值。">
+                <Box sx={{ display: "inline-flex", color: "text.secondary" }}>
+                  <Info size={14} />
+                </Box>
+              </Tooltip>
+            </Box>
+            <Chip label={`${document.fieldStats?.length ?? 0} fields`} size="small" variant="outlined" />
+          </Box>
+          {!document.fieldStats?.length ? (
+            <Box sx={{ p: 1.5 }}>
+              <Typography variant="body2" color="text.secondary">
+                该数据源没有字段统计。
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ maxHeight: 280, overflowY: "auto" }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: 11, fontWeight: 600 }}>字段</TableCell>
+                    <TableCell sx={{ fontSize: 11, fontWeight: 600 }}>类型</TableCell>
+                    <TableCell sx={{ fontSize: 11, fontWeight: 600 }} align="right">非空 / 总计</TableCell>
+                    <TableCell sx={{ fontSize: 11, fontWeight: 600 }} align="right">缺失</TableCell>
+                    <TableCell sx={{ fontSize: 11, fontWeight: 600 }} align="right">缺失率</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {document.fieldStats.map((field) => (
+                    <TableRow key={field.name} hover>
+                      <TableCell sx={{ fontSize: 11, fontWeight: 700, fontFamily: "monospace" }}>{field.name}</TableCell>
+                      <TableCell sx={{ fontSize: 11 }}>{field.type || "-"}</TableCell>
+                      <TableCell sx={{ fontSize: 11, fontFamily: "monospace" }} align="right">
+                        {field.presentRows.toLocaleString()} / {field.totalRows.toLocaleString()}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: 11, fontFamily: "monospace" }} align="right">
+                        {field.missingRows.toLocaleString()}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: 11, fontFamily: "monospace" }} align="right">
+                        {field.missingRate.toFixed(2)}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          )}
         </Box>
       </Box>
     );

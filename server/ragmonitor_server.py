@@ -38,6 +38,7 @@ DEFAULT_CHUNKING_CONFIG = {
 }
 CHUNKING_CONFIGS: dict[int, dict] = {}
 CHUNKING_JOBS: dict[int, dict] = {}
+FIELD_STATS_CACHE: dict[str, list[dict]] = {}
 NEXT_JOB_ID = 1
 PUBLIC_BASE_PATH = os.environ.get("RAGMONITOR_BASE_PATH", "/agent-monitor").strip()
 if PUBLIC_BASE_PATH and not PUBLIC_BASE_PATH.startswith("/"):
@@ -467,6 +468,64 @@ def build_knowledge_document_index() -> list[dict]:
     return items
 
 
+def sqlite_quote_ident(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
+def build_knowledge_field_stats(source_database: str) -> list[dict]:
+    cached = FIELD_STATS_CACHE.get(source_database)
+    if cached is not None:
+        return cached
+
+    columns = sqlite_rows("pragma table_info(records)")
+    if not columns:
+        FIELD_STATS_CACHE[source_database] = []
+        return []
+
+    select_exprs = ["count(*) as total_rows"]
+    column_specs: list[tuple[str, str]] = []
+    for index, column in enumerate(columns):
+        column_name = str(column.get("name") or "")
+        if not column_name:
+            continue
+        alias = f"missing_{index}"
+        quoted_column = sqlite_quote_ident(column_name)
+        quoted_alias = sqlite_quote_ident(alias)
+        select_exprs.append(
+            f"sum(case when {quoted_column} is null or trim(cast({quoted_column} as text)) = '' then 1 else 0 end) as {quoted_alias}"
+        )
+        column_specs.append((column_name, str(column.get("type") or "")))
+
+    row = sqlite_rows(
+        f"select {', '.join(select_exprs)} from records where source_database = ?",
+        (source_database,),
+    )
+    if not row:
+        FIELD_STATS_CACHE[source_database] = []
+        return []
+
+    totals = row[0]
+    total_rows = int(totals.get("total_rows") or 0)
+    field_stats: list[dict] = []
+    for index, (column_name, column_type) in enumerate(column_specs):
+        missing_rows = int(totals.get(f"missing_{index}") or 0)
+        present_rows = max(total_rows - missing_rows, 0)
+        missing_rate = round((missing_rows / total_rows) * 100, 2) if total_rows else 0.0
+        field_stats.append(
+            {
+                "name": column_name,
+                "type": column_type or "TEXT",
+                "totalRows": total_rows,
+                "presentRows": present_rows,
+                "missingRows": missing_rows,
+                "missingRate": missing_rate,
+            }
+        )
+
+    FIELD_STATS_CACHE[source_database] = field_stats
+    return field_stats
+
+
 def knowledge_document_samples(source_database: str | None = None, limit: int = 10) -> list[dict]:
     limit = max(1, min(int(limit), 50))
     select_clause = """
@@ -508,6 +567,7 @@ def build_knowledge_document_detail(document_id: int) -> dict | None:
         return None
     detail = dict(doc)
     detail["sampleRecords"] = knowledge_document_samples(detail["sourceDatabase"], 10)
+    detail["fieldStats"] = build_knowledge_field_stats(detail["sourceDatabase"])
     return detail
 
 

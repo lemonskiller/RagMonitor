@@ -75,6 +75,7 @@ function mapDocument(item: Record<string, any>): KnowledgeDocument {
     recordCount: Number(item.recordCount ?? item.chunkCount ?? 0),
     sourceFileCount: Number(item.sourceFileCount ?? item.pageCount ?? 1),
     sampleRecords: Array.isArray(item.sampleRecords) ? item.sampleRecords : undefined,
+    fieldStats: Array.isArray(item.fieldStats) ? item.fieldStats : undefined,
   };
 }
 

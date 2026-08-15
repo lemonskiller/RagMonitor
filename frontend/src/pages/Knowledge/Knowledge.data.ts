@@ -22,6 +22,16 @@ export type KnowledgeDocument = {
   recordCount?: number;
   sourceFileCount?: number;
   sampleRecords?: KnowledgeSampleRecord[];
+  fieldStats?: KnowledgeFieldStat[];
+};
+
+export type KnowledgeFieldStat = {
+  name: string;
+  type: string;
+  totalRows: number;
+  presentRows: number;
+  missingRows: number;
+  missingRate: number;
 };
 
 export type KnowledgeSampleRecord = {
