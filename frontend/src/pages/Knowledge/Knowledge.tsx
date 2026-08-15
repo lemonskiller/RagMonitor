@@ -155,6 +155,20 @@ export default function Knowledge() {
     }
   };
 
+  const refreshSelectedDocumentSample = async (sampleSize: number) => {
+    if (!selectedDocument) return;
+    setDetailLoading(true);
+    try {
+      const response = await knowledgeApi.getDocument(selectedDocument.id, { sampleSize: String(sampleSize) });
+      setSelectedDocument(mapDocument(response.data));
+      setError(null);
+    } catch {
+      setError("随机抽样刷新失败，请稍后重试。");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const closeDocumentDialog = () => setSelectedDocument(null);
 
   const metrics = useMemo(() => [
@@ -489,7 +503,13 @@ export default function Knowledge() {
                   ))}
                 </Tabs>
                 <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", p: { xs: 2, sm: 2.5 } }}>
-                  <DocumentStageDetails key={selectedDocument.id} document={selectedDocument} stage={stage} />
+                  <DocumentStageDetails
+                    key={selectedDocument.id}
+                    document={selectedDocument}
+                    stage={stage}
+                    onRandomSample={(sampleSize) => void refreshSelectedDocumentSample(sampleSize)}
+                    sampleLoading={detailLoading}
+                  />
                 </Box>
               </Box>
             </DialogContent>

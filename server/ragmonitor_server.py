@@ -562,13 +562,25 @@ def knowledge_document_samples(source_database: str | None = None, limit: int = 
 
 
 def build_knowledge_document_detail(document_id: int) -> dict | None:
+    return build_knowledge_document_detail_with_sample_size(document_id, 10)
+
+
+def build_knowledge_document_detail_with_sample_size(document_id: int, sample_size: int) -> dict | None:
     doc = next((item for item in build_knowledge_document_index() if item["id"] == document_id), None)
     if not doc:
         return None
     detail = dict(doc)
-    detail["sampleRecords"] = knowledge_document_samples(detail["sourceDatabase"], 10)
+    detail["sampleRecords"] = knowledge_document_samples(detail["sourceDatabase"], sample_size)
     detail["fieldStats"] = build_knowledge_field_stats(detail["sourceDatabase"])
     return detail
+
+
+def parse_positive_int(value: str | None, default: int) -> int:
+    try:
+        parsed = int(value) if value is not None and value != "" else default
+    except ValueError:
+        return default
+    return max(parsed, 1)
 
 
 def build_knowledge_list_response(params: dict[str, list[str]]) -> dict:
@@ -680,11 +692,15 @@ class Handler(BaseHTTPRequestHandler):
             if not docs:
                 self.send_json({"error": "document not found"}, status=404)
                 return
-            self.send_json(build_knowledge_document_detail(docs[0]["id"]) or {"error": "document not found"})
+            sample_size = parse_positive_int((parse_qs(parsed.query).get("sampleSize", ["10"]) or ["10"])[0], 10)
+            self.send_json(
+                build_knowledge_document_detail_with_sample_size(docs[0]["id"], sample_size) or {"error": "document not found"}
+            )
             return
         match = re.fullmatch(r"/api/knowledge/documents/(\d+)$", path)
         if match:
-            detail = build_knowledge_document_detail(int(match.group(1)))
+            sample_size = parse_positive_int((parse_qs(parsed.query).get("sampleSize", ["10"]) or ["10"])[0], 10)
+            detail = build_knowledge_document_detail_with_sample_size(int(match.group(1)), sample_size)
             self.send_json(detail if detail else {"error": "document not found"}, status=200 if detail else 404)
             return
         match = re.fullmatch(r"/api/knowledge/documents/(\d+)/chunking", path)
