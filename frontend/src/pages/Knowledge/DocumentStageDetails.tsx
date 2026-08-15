@@ -88,7 +88,7 @@ function valueOrDash(value: unknown) {
 }
 
 export default function DocumentStageDetails({ document, stage, onRandomSample, sampleLoading = false }: DocumentStageDetailsProps) {
-  const records = document.sampleRecords ?? [];
+  const records = useMemo(() => document.sampleRecords ?? [], [document.sampleRecords]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [sampleSizeInput, setSampleSizeInput] = useState(String(Math.max(records.length || 10, 1)));
   const selectedRecord = records[selectedIndex] ?? records[0];
@@ -98,7 +98,7 @@ export default function DocumentStageDetails({ document, stage, onRandomSample, 
   useEffect(() => {
     setSampleSizeInput(String(Math.max(records.length || 10, 1)));
     setSelectedIndex(0);
-  }, [document.id, records.length]);
+  }, [document.id, records]);
 
   const runRandomSample = async () => {
     const sampleSize = normalizeSampleSize(sampleSizeInput);

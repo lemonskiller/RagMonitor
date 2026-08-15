@@ -14,7 +14,6 @@ import {
   MenuItem,
   Paper,
   Select,
-  Snackbar,
   Tab,
   Table,
   TableBody,
@@ -28,7 +27,6 @@ import {
 } from "@mui/material";
 import { Database, FileText, RefreshCw, Search, Split, WandSparkles, X } from "lucide-react";
 import DocumentStageDetails from "./DocumentStageDetails";
-import { normalizeSampleSize } from "./Knowledge.data";
 import { knowledgeApi } from "../../services/api";
 import type { KnowledgeDocument } from "./Knowledge.data";
 
@@ -107,8 +105,6 @@ export default function Knowledge() {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [sampleSizeInput, setSampleSizeInput] = useState("10");
 
   const loadKnowledge = async (keyword = queryInput) => {
     setLoading(true);
@@ -207,8 +203,6 @@ export default function Knowledge() {
     );
   }, [documents]);
 
-  const sampleCount = normalizeSampleSize(sampleSizeInput);
-
   return (
     <Box>
       <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", sm: "flex-start" }, gap: 2, mb: 2.5 }}>
@@ -272,32 +266,6 @@ export default function Knowledge() {
               <MenuItem value="all">全部状态</MenuItem>
               <MenuItem value="INGESTED">INGESTED</MenuItem>
             </Select>
-            <Box sx={{ height: 40, display: "flex", alignItems: "center", gap: 0.75, pl: 1.25, pr: 0.75, border: "1px solid", borderColor: "divider", borderRadius: 2.5, bgcolor: "background.paper" }}>
-              <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>抽样数</Typography>
-              <TextField
-                type="number"
-                size="small"
-                variant="standard"
-                value={sampleSizeInput}
-                onChange={(event) => setSampleSizeInput(event.target.value)}
-                onBlur={() => setSampleSizeInput(String(normalizeSampleSize(sampleSizeInput)))}
-                inputProps={{ min: 1, step: 1, inputMode: "numeric" }}
-                InputProps={{ disableUnderline: true, endAdornment: <Typography variant="caption" color="text.secondary">个</Typography> }}
-                sx={{ width: 72, bgcolor: "background.paper", "& input": { py: 1, px: 0.25, textAlign: "right", fontSize: 12, fontWeight: 700 } }}
-              />
-            </Box>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<Database size={14} />}
-              onClick={() => {
-                setFeedbackOpen(true);
-                setQueryInput("");
-                void loadKnowledge("");
-              }}
-            >
-              重新抽样
-            </Button>
           </Box>
           {error && <Alert severity="warning" sx={{ mx: 2, mb: 2 }}>{error}</Alert>}
           <Box sx={{ px: 2, pb: 2 }}>
@@ -517,13 +485,6 @@ export default function Knowledge() {
         )}
       </Dialog>
 
-      <Snackbar
-        open={feedbackOpen}
-        autoHideDuration={2200}
-        onClose={() => setFeedbackOpen(false)}
-        message={`已从真实后端重新抽样 · ${sampleCount} 个记录视图`}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      />
     </Box>
   );
 }
