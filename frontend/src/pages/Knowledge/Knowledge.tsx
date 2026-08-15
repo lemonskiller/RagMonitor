@@ -5,11 +5,13 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
   Divider,
   IconButton,
+  LinearProgress,
   MenuItem,
   Paper,
   Select,
@@ -38,8 +40,10 @@ import {
   X,
 } from "lucide-react";
 import DocumentStageDetails from "./DocumentStageDetails";
+import { knowledgeApi } from "../../services/api";
 import {
   DEFAULT_SAMPLE_SIZE,
+  getSamplingProgress,
   KNOWLEDGE_DOCUMENTS,
   normalizeSampleSize,
 } from "./Knowledge.data";
@@ -54,11 +58,27 @@ const PDF_STAGES = [
 
 type PdfStage = (typeof PDF_STAGES)[number]["id"];
 
+type SampleRun = {
+  status: "idle" | "running" | "completed" | "failed";
+  completed: number;
+  total: number;
+  error: string | null;
+};
+
 export default function Knowledge() {
   const [selectedDocument, setSelectedDocument] = useState<KnowledgeDocument | null>(null);
   const [pdfStage, setPdfStage] = useState<PdfStage>("overview");
   const [sampleSizeInput, setSampleSizeInput] = useState(String(DEFAULT_SAMPLE_SIZE));
   const [sampleFeedbackOpen, setSampleFeedbackOpen] = useState(false);
+  const [sampleRun, setSampleRun] = useState<SampleRun>({
+    status: "idle",
+    completed: 0,
+    total: DEFAULT_SAMPLE_SIZE,
+    error: null,
+  });
+
+  const sampleProgress = getSamplingProgress(sampleRun.completed, sampleRun.total);
+  const sampling = sampleRun.status === "running";
 
   const openDocument = (document: KnowledgeDocument) => {
     setSelectedDocument(document);
@@ -66,6 +86,30 @@ export default function Knowledge() {
   };
 
   const closeDocumentDialog = () => setSelectedDocument(null);
+
+  const runRandomSample = async () => {
+    if (sampling) return;
+
+    const total = normalizeSampleSize(sampleSizeInput);
+    setSampleSizeInput(String(total));
+    setSampleFeedbackOpen(false);
+    setSampleRun({ status: "running", completed: 0, total, error: null });
+
+    try {
+      for (let completed = 1; completed <= total; completed += 1) {
+        await knowledgeApi.getSample();
+        setSampleRun({ status: "running", completed, total, error: null });
+      }
+      setSampleRun({ status: "completed", completed: total, total, error: null });
+      setSampleFeedbackOpen(true);
+    } catch {
+      setSampleRun((current) => ({
+        ...current,
+        status: "failed",
+        error: "抽样请求未完成，请检查数据服务后重试。",
+      }));
+    }
+  };
 
   return (
     <Box>
@@ -154,6 +198,7 @@ export default function Knowledge() {
                 size="small"
                 variant="standard"
                 value={sampleSizeInput}
+                disabled={sampling}
                 onChange={(event) => setSampleSizeInput(event.target.value)}
                 onBlur={() => setSampleSizeInput(String(normalizeSampleSize(sampleSizeInput)))}
                 inputProps={{ min: 1, step: 1, inputMode: "numeric", "aria-label": "随机抽样数量" }}
@@ -164,15 +209,43 @@ export default function Knowledge() {
             <Button
               size="small"
               variant="outlined"
-              startIcon={<Dices size={14} />}
-              onClick={() => {
-                setSampleSizeInput(String(normalizeSampleSize(sampleSizeInput)));
-                setSampleFeedbackOpen(true);
-              }}
+              startIcon={sampling ? <CircularProgress size={14} color="inherit" /> : <Dices size={14} />}
+              disabled={sampling}
+              onClick={() => void runRandomSample()}
+              sx={{ minWidth: 124 }}
             >
-              随机抽样
+              {sampling ? `抽样中 ${sampleProgress}%` : "随机抽样"}
             </Button>
           </Box>
+          {sampleRun.status !== "idle" && (
+            <Box
+              role="status"
+              aria-live="polite"
+              sx={{ px: 2, pb: 1.75 }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, mb: 0.75 }}>
+                <Typography variant="caption" color={sampleRun.status === "failed" ? "error.main" : "text.secondary"}>
+                  {sampleRun.status === "running" && `正在随机抽样 · ${sampleRun.completed} / ${sampleRun.total}`}
+                  {sampleRun.status === "completed" && `随机抽样完成 · ${sampleRun.completed} / ${sampleRun.total}`}
+                  {sampleRun.status === "failed" && `随机抽样中断 · ${sampleRun.completed} / ${sampleRun.total}`}
+                </Typography>
+                <Typography variant="caption" fontFamily="monospace" fontWeight={700} color={sampleRun.status === "failed" ? "error.main" : sampleRun.status === "completed" ? "success.main" : "primary.main"}>
+                  {sampleProgress}%
+                </Typography>
+              </Box>
+              <LinearProgress
+                variant="determinate"
+                value={sampleProgress}
+                color={sampleRun.status === "failed" ? "error" : sampleRun.status === "completed" ? "success" : "primary"}
+                sx={{ height: 5, borderRadius: 2.5 }}
+              />
+              {sampleRun.error && (
+                <Typography variant="caption" color="error.main" sx={{ display: "block", mt: 0.75 }}>
+                  {sampleRun.error}
+                </Typography>
+              )}
+            </Box>
+          )}
           <Box sx={{ overflowX: "auto" }}>
             <Table size="small" sx={{ minWidth: 900 }}>
               <TableHead>

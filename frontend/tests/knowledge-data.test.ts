@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   DEFAULT_SAMPLE_SIZE,
+  getSamplingProgress,
   getKnowledgeDocument,
   getKnowledgeDocumentDetails,
   KNOWLEDGE_DOCUMENTS,
@@ -44,4 +45,12 @@ test("random sampling accepts editable positive integers and defaults invalid in
   assert.equal(normalizeSampleSize("12.8"), 12);
   assert.equal(normalizeSampleSize("0"), 10);
   assert.equal(normalizeSampleSize(""), 10);
+});
+
+test("random sampling reports bounded progress from completed documents", () => {
+  assert.equal(getSamplingProgress(0, 10), 0);
+  assert.equal(getSamplingProgress(3, 10), 30);
+  assert.equal(getSamplingProgress(10, 10), 100);
+  assert.equal(getSamplingProgress(12, 10), 100);
+  assert.equal(getSamplingProgress(1, 0), 0);
 });
