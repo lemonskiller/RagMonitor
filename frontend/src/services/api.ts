@@ -16,8 +16,8 @@ const api = axios.create({
 // ---- Knowledge ----
 export const knowledgeApi = {
   listDocuments: (params?: Record<string, string>) => api.get("/knowledge/documents", { params }),
-  getDocument: (id: number) => api.get(`/knowledge/documents/${id}`),
-  getSample: () => api.get("/knowledge/documents/sample"),
+  getDocument: (id: number, params?: Record<string, string>) => api.get(`/knowledge/documents/${id}`, { params }),
+  getSample: (params?: Record<string, string>) => api.get("/knowledge/documents/sample", { params }),
   getStats: () => api.get("/knowledge/stats"),
   getChunkingConfig: (documentId: number) =>
     api.get<ChunkingConfigResponse>(`/knowledge/documents/${documentId}/chunking`),

@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
-import { Box, ButtonBase, Chip, Divider, Paper, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography } from "@mui/material";
-import { Database, FileText, Info, Sigma, Table2, WandSparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Box, Button, ButtonBase, Chip, CircularProgress, Divider, Paper, Table, TableBody, TableCell, TableHead, TableRow, TextField, Tooltip, Typography } from "@mui/material";
+import { Database, Dices, FileText, Info, Sigma, Table2, WandSparkles } from "lucide-react";
 import ChunkingWorkbench from "./ChunkingWorkbench";
-import { buildChunksFromSampleRecords } from "./Knowledge.data";
+import { buildChunksFromSampleRecords, normalizeSampleSize } from "./Knowledge.data";
 import type { KnowledgeDocument, KnowledgeSampleRecord } from "./Knowledge.data";
 
 type DetailStage = "overview" | "records" | "chunking" | "raw";
@@ -10,6 +10,8 @@ type DetailStage = "overview" | "records" | "chunking" | "raw";
 type DocumentStageDetailsProps = {
   document: KnowledgeDocument;
   stage: DetailStage;
+  onRandomSample?: (sampleSize: number) => Promise<void> | void;
+  sampleLoading?: boolean;
 };
 
 const STAGE_LABELS: Record<DetailStage, string> = {
@@ -85,11 +87,24 @@ function valueOrDash(value: unknown) {
   return String(value);
 }
 
-export default function DocumentStageDetails({ document, stage }: DocumentStageDetailsProps) {
+export default function DocumentStageDetails({ document, stage, onRandomSample, sampleLoading = false }: DocumentStageDetailsProps) {
   const records = document.sampleRecords ?? [];
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [sampleSizeInput, setSampleSizeInput] = useState(String(Math.max(records.length || 10, 1)));
   const selectedRecord = records[selectedIndex] ?? records[0];
   const chunkRecords = useMemo(() => buildChunksFromSampleRecords(records, document.recordCount ?? records.length), [document.recordCount, records]);
+  const samplingDisabled = sampleLoading || !onRandomSample;
+
+  useEffect(() => {
+    setSampleSizeInput(String(Math.max(records.length || 10, 1)));
+    setSelectedIndex(0);
+  }, [document.id, records.length]);
+
+  const runRandomSample = async () => {
+    const sampleSize = normalizeSampleSize(sampleSizeInput);
+    setSampleSizeInput(String(sampleSize));
+    await onRandomSample?.(sampleSize);
+  };
 
   if (stage === "overview") {
     const fields = [
@@ -211,10 +226,6 @@ export default function DocumentStageDetails({ document, stage }: DocumentStageD
   }
 
   if (stage === "records") {
-    if (records.length === 0) {
-      return <Typography variant="body2" color="text.secondary">当前数据源没有抽样记录。</Typography>;
-    }
-
     return (
       <Box>
         <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, mb: 2 }}>
@@ -233,7 +244,38 @@ export default function DocumentStageDetails({ document, stage }: DocumentStageD
               从真实 `records` 表抽样展示
             </Typography>
           </Box>
-          <DataSourceBadge />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, height: 40, px: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 2.5, bgcolor: "background.paper" }}>
+              <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+                抽样条数
+              </Typography>
+              <TextField
+                type="number"
+                size="small"
+                variant="standard"
+                value={sampleSizeInput}
+                onChange={(event) => setSampleSizeInput(event.target.value)}
+                onBlur={() => setSampleSizeInput(String(normalizeSampleSize(sampleSizeInput)))}
+                inputProps={{ min: 1, step: 1, inputMode: "numeric" }}
+                InputProps={{ disableUnderline: true }}
+                sx={{ width: 72, "& input": { py: 0.75, px: 0.25, textAlign: "right", fontSize: 12, fontWeight: 700 } }}
+              />
+            </Box>
+            <Tooltip title="按输入条数从 records 表重新随机抽样">
+              <span>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={sampleLoading ? <CircularProgress size={14} color="inherit" /> : <Dices size={14} />}
+                  disabled={samplingDisabled}
+                  onClick={() => void runRandomSample()}
+                >
+                  随机抽样
+                </Button>
+              </span>
+            </Tooltip>
+            <DataSourceBadge />
+          </Box>
         </Box>
 
         <Box
@@ -245,7 +287,7 @@ export default function DocumentStageDetails({ document, stage }: DocumentStageD
             borderRadius: 2,
             overflow: "hidden",
           }}
-        >
+          >
           <Box sx={{ borderRight: { md: "1px solid" }, borderBottom: { xs: "1px solid", md: 0 }, borderColor: "divider", bgcolor: "grey.50" }}>
             {records.map((item, index) => (
               <InspectorListItem
@@ -258,7 +300,7 @@ export default function DocumentStageDetails({ document, stage }: DocumentStageD
             ))}
           </Box>
 
-          {selectedRecord && (
+          {selectedRecord ? (
             <Box sx={{ minWidth: 0, p: 2 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", mb: 1.5 }}>
                 <Chip label={valueOrDash(selectedRecord.entity_type)} size="small" color="primary" />
@@ -287,6 +329,12 @@ export default function DocumentStageDetails({ document, stage }: DocumentStageD
                   {valueOrDash(selectedRecord.description)}
                 </Typography>
               </Paper>
+            </Box>
+          ) : (
+            <Box sx={{ minWidth: 0, p: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                当前没有抽样记录，调整抽样条数后可重新随机抽样。
+              </Typography>
             </Box>
           )}
         </Box>
