@@ -19,7 +19,6 @@
 
     <properties>
         <java.version>21</java.version>
-        <spring-ai.version>1.0.0-M3</spring-ai.version>
         <mybatis-plus.version>3.5.7</mybatis-plus.version>
     </properties>
 
@@ -76,13 +75,6 @@
             <groupId>io.milvus</groupId>
             <artifactId>milvus-sdk-java</artifactId>
             <version>2.4.1</version>
-        </dependency>
-
-        <!-- Spring AI (Milvus + OpenAI) -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-milvus-store-spring-boot-starter</artifactId>
-            <version>${spring-ai.version}</version>
         </dependency>
 
         <!-- Micrometer for Prometheus -->

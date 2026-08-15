@@ -1,4 +1,9 @@
 import axios from "axios";
+import type {
+  ChunkingConfigInput,
+  ChunkingConfigResponse,
+  ChunkingJob,
+} from "../pages/Knowledge/chunking";
 
 const api = axios.create({
   baseURL: "/api",
@@ -12,6 +17,12 @@ export const knowledgeApi = {
   getDocument: (id: number) => api.get(`/knowledge/documents/${id}`),
   getSample: () => api.get("/knowledge/documents/sample"),
   getStats: () => api.get("/knowledge/stats"),
+  getChunkingConfig: (documentId: number) =>
+    api.get<ChunkingConfigResponse>(`/knowledge/documents/${documentId}/chunking`),
+  updateChunkingConfig: (documentId: number, data: ChunkingConfigInput) =>
+    api.put<ChunkingJob>(`/knowledge/documents/${documentId}/chunking`, data),
+  getChunkingJob: (jobId: number) =>
+    api.get<ChunkingJob>(`/knowledge/chunking-jobs/${jobId}`),
 };
 
 // ---- Studio / Pipeline ----

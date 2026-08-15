@@ -1,7 +1,12 @@
 package com.ragmonitor.controller;
 
+import com.ragmonitor.dto.ChunkingConfigRequest;
+import com.ragmonitor.dto.ChunkingConfigResponse;
+import com.ragmonitor.dto.ChunkingJobResponse;
 import com.ragmonitor.entity.Document;
 import com.ragmonitor.repository.DocumentRepository;
+import com.ragmonitor.service.ChunkingConfigService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +20,7 @@ import java.util.Map;
 public class KnowledgeController {
 
     private final DocumentRepository documentRepository;
+    private final ChunkingConfigService chunkingConfigService;
 
     @GetMapping("/documents")
     public Page<Document> listDocuments(
@@ -34,6 +40,23 @@ public class KnowledgeController {
     @GetMapping("/documents/{id}")
     public Document getDocument(@PathVariable Long id) {
         return documentRepository.findById(id).orElseThrow();
+    }
+
+    @GetMapping("/documents/{id}/chunking")
+    public ChunkingConfigResponse getChunkingConfiguration(@PathVariable Long id) {
+        return chunkingConfigService.getConfiguration(id);
+    }
+
+    @PutMapping("/documents/{id}/chunking")
+    public ChunkingJobResponse updateChunkingConfiguration(
+            @PathVariable Long id,
+            @Valid @RequestBody ChunkingConfigRequest request) {
+        return chunkingConfigService.updateConfiguration(id, request);
+    }
+
+    @GetMapping("/chunking-jobs/{jobId}")
+    public ChunkingJobResponse getChunkingJob(@PathVariable Long jobId) {
+        return chunkingConfigService.getJob(jobId);
     }
 
     @GetMapping("/documents/sample")
