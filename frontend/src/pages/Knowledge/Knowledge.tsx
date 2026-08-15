@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -86,6 +86,15 @@ function unwrapDocuments(data: unknown): Record<string, any>[] {
   return [];
 }
 
+type SourceGroup = {
+  sourceName: string;
+  category: string;
+  recordCount: number;
+  sourceFileCount: number;
+  evidenceClass: string;
+  documents: KnowledgeDocument[];
+};
+
 export default function Knowledge() {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [stats, setStats] = useState<KnowledgeStats | null>(null);
@@ -155,6 +164,34 @@ export default function Knowledge() {
     ["别名", stats?.aliasCount ?? 0],
   ] as const, [stats]);
 
+  const sourceGroups = useMemo<SourceGroup[]>(() => {
+    const groups = new Map<string, SourceGroup>();
+
+    documents.forEach((document) => {
+      const sourceName = document.sourceDatabase || document.source || document.name;
+      const existing = groups.get(sourceName);
+      if (existing) {
+        existing.documents.push(document);
+        existing.recordCount += Number(document.recordCount ?? document.chunks ?? 0);
+        existing.sourceFileCount += Number(document.sourceFileCount ?? 0);
+        return;
+      }
+
+      groups.set(sourceName, {
+        sourceName,
+        category: document.category || document.source || "-",
+        recordCount: Number(document.recordCount ?? document.chunks ?? 0),
+        sourceFileCount: Number(document.sourceFileCount ?? 0),
+        evidenceClass: document.evidenceClass || document.duplicateStatus || "-",
+        documents: [document],
+      });
+    });
+
+    return Array.from(groups.values()).sort((left, right) =>
+      left.sourceName.localeCompare(right.sourceName, "en", { sensitivity: "base" }),
+    );
+  }, [documents]);
+
   const sampleCount = normalizeSampleSize(sampleSizeInput);
 
   return (
@@ -194,7 +231,7 @@ export default function Knowledge() {
             <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
               <Chip label="sources" size="small" variant="outlined" />
               <Chip label="source_metadata" size="small" variant="outlined" />
-              <Chip label={loading ? "加载中" : `${documents.length} sources`} size="small" color="success" />
+              <Chip label={loading ? "加载中" : `${sourceGroups.length} 数据源`} size="small" color="success" />
             </Box>
           </Box>
           <Divider />
@@ -248,6 +285,58 @@ export default function Knowledge() {
             </Button>
           </Box>
           {error && <Alert severity="warning" sx={{ mx: 2, mb: 2 }}>{error}</Alert>}
+          <Box sx={{ px: 2, pb: 2 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, gap: 1 }}>
+              {sourceGroups.map((group, index) => {
+                const primaryDocument = group.documents[0];
+
+                return (
+                  <Box
+                    key={group.sourceName}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`打开 ${group.sourceName} 数据源`}
+                    onClick={() => primaryDocument && void openDocument(primaryDocument)}
+                    onKeyDown={(event) => {
+                      if ((event.key === "Enter" || event.key === " ") && primaryDocument) {
+                        event.preventDefault();
+                        void openDocument(primaryDocument);
+                      }
+                    }}
+                    sx={{
+                      minWidth: 0,
+                      p: 1.5,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      borderRadius: 1.5,
+                      bgcolor: "background.paper",
+                      cursor: primaryDocument ? "pointer" : "default",
+                      "&:hover": { borderColor: "primary.main", bgcolor: "action.hover" },
+                      "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: 2 },
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                      <Typography variant="caption" fontFamily="monospace" fontWeight={800} color="text.secondary" sx={{ width: 24 }}>
+                        {String(index + 1).padStart(2, "0")}
+                      </Typography>
+                      <Database size={15} />
+                      <Typography variant="body2" fontWeight={800} sx={{ minWidth: 0, flex: 1, overflowWrap: "anywhere" }}>
+                        {group.sourceName}
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1, overflowWrap: "anywhere" }}>
+                      {group.category}
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+                      <Chip label={`${group.recordCount.toLocaleString()} records`} size="small" variant="outlined" />
+                      <Chip label={`${group.sourceFileCount.toLocaleString()} files`} size="small" variant="outlined" />
+                      <Chip label={group.evidenceClass} size="small" color="success" variant="outlined" />
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
           <Box sx={{ maxHeight: { xs: 540, md: 640 }, overflow: "auto" }}>
             <Table size="small" stickyHeader sx={{ minWidth: 1080 }}>
               <TableHead>
@@ -258,46 +347,65 @@ export default function Knowledge() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {documents.map((document, index) => (
-                  <TableRow
-                    key={document.id}
-                    hover
-                    tabIndex={0}
-                    aria-label={`打开 ${document.name} 知识源`}
-                    onClick={() => void openDocument(document)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        void openDocument(document);
-                      }
-                    }}
-                    sx={{ cursor: "pointer", "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: -2 } }}
-                  >
-                    <TableCell sx={{ fontSize: 11, fontFamily: "monospace", width: 72 }}>{index + 1}</TableCell>
-                    <TableCell sx={{ fontSize: 11, fontWeight: 600 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                        <FileText size={14} />
-                        <Typography component="span" variant="body2" fontSize={11} fontWeight={700} sx={{ flex: 1, overflowWrap: "anywhere" }}>
-                          {document.name}
-                        </Typography>
-                        <Tooltip title="打开知识源详情">
-                          <IconButton size="small" aria-label={`打开 ${document.name} 知识源`} sx={{ color: "primary.main" }}>
-                            <Search size={14} />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5, overflowWrap: "anywhere" }}>
-                        {document.sourceDatabase}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>{document.category || document.source}</TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>{document.parserVersion || document.parser}</TableCell>
-                    <TableCell sx={{ fontSize: 11, fontFamily: "monospace" }}>{Number(document.recordCount ?? document.chunks).toLocaleString()}</TableCell>
-                    <TableCell sx={{ fontSize: 11, fontFamily: "monospace" }}>{Number(document.sourceFileCount ?? 1).toLocaleString()}</TableCell>
-                    <TableCell><Chip label={document.evidenceClass || document.duplicateStatus} color="success" size="small" /></TableCell>
-                    <TableCell><Chip label={document.ingestStatus} color="success" size="small" /></TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>{document.updatedAt}</TableCell>
-                  </TableRow>
+                {sourceGroups.map((group, groupIndex) => (
+                  <Fragment key={group.sourceName}>
+                    <TableRow key={`${group.sourceName}-group`}>
+                      <TableCell colSpan={9} sx={{ bgcolor: "grey.50", borderTop: "1px solid", borderColor: "divider", py: 1 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+                          <Typography variant="caption" fontFamily="monospace" fontWeight={800} color="text.secondary">
+                            {String(groupIndex + 1).padStart(2, "0")}
+                          </Typography>
+                          <Database size={14} />
+                          <Typography variant="body2" fontWeight={800}>{group.sourceName}</Typography>
+                          <Chip label={group.category} size="small" variant="outlined" />
+                          <Chip label={`${group.recordCount.toLocaleString()} records`} size="small" color="primary" variant="outlined" />
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                    {group.documents.map((document, documentIndex) => (
+                      <TableRow
+                        key={document.id}
+                        hover
+                        tabIndex={0}
+                        aria-label={`打开 ${document.name} 知识源`}
+                        onClick={() => void openDocument(document)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            void openDocument(document);
+                          }
+                        }}
+                        sx={{ cursor: "pointer", "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: -2 } }}
+                      >
+                        <TableCell sx={{ fontSize: 11, fontFamily: "monospace", width: 72 }}>
+                          {group.documents.length > 1 ? `${groupIndex + 1}.${documentIndex + 1}` : groupIndex + 1}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: 11, fontWeight: 600 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                            <FileText size={14} />
+                            <Typography component="span" variant="body2" fontSize={11} fontWeight={700} sx={{ flex: 1, overflowWrap: "anywhere" }}>
+                              {document.name}
+                            </Typography>
+                            <Tooltip title="打开知识源详情">
+                              <IconButton size="small" aria-label={`打开 ${document.name} 知识源`} sx={{ color: "primary.main" }}>
+                                <Search size={14} />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5, overflowWrap: "anywhere" }}>
+                            {document.sourceDatabase}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ fontSize: 11 }}>{document.category || document.source}</TableCell>
+                        <TableCell sx={{ fontSize: 11 }}>{document.parserVersion || document.parser}</TableCell>
+                        <TableCell sx={{ fontSize: 11, fontFamily: "monospace" }}>{Number(document.recordCount ?? document.chunks).toLocaleString()}</TableCell>
+                        <TableCell sx={{ fontSize: 11, fontFamily: "monospace" }}>{Number(document.sourceFileCount ?? 1).toLocaleString()}</TableCell>
+                        <TableCell><Chip label={document.evidenceClass || document.duplicateStatus} color="success" size="small" /></TableCell>
+                        <TableCell><Chip label={document.ingestStatus} color="success" size="small" /></TableCell>
+                        <TableCell sx={{ fontSize: 11 }}>{document.updatedAt}</TableCell>
+                      </TableRow>
+                    ))}
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>
