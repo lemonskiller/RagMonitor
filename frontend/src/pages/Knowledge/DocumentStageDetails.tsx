@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Box, ButtonBase, Chip, Divider, Paper, Typography } from "@mui/material";
-import { Database, FileText, Sigma, Table2, WandSparkles } from "lucide-react";
+import { Box, ButtonBase, Chip, Divider, Paper, Tooltip, Typography } from "@mui/material";
+import { Database, FileText, Info, Sigma, Table2, WandSparkles } from "lucide-react";
 import ChunkingWorkbench from "./ChunkingWorkbench";
 import { buildChunksFromSampleRecords } from "./Knowledge.data";
 import type { KnowledgeDocument, KnowledgeSampleRecord } from "./Knowledge.data";
@@ -165,9 +165,16 @@ export default function DocumentStageDetails({ document, stage }: DocumentStageD
       <Box>
         <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, mb: 2 }}>
           <Box>
-            <Typography variant="subtitle2" fontWeight={700}>
-              抽样记录
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+              <Typography variant="subtitle2" fontWeight={700}>
+                抽样记录
+              </Typography>
+              <Tooltip title="左侧展示的是 records 表里的抽样字段摘要，不是 raw_json 的原始键值对；右侧卡片是同一条记录的结构化字段。">
+                <Box sx={{ display: "inline-flex", color: "text.secondary" }}>
+                  <Info size={14} />
+                </Box>
+              </Tooltip>
+            </Box>
             <Typography variant="caption" color="text.secondary">
               从真实 `records` 表抽样展示
             </Typography>
@@ -243,9 +250,16 @@ export default function DocumentStageDetails({ document, stage }: DocumentStageD
     <Box>
       <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, mb: 2 }}>
         <Box>
-          <Typography variant="subtitle2" fontWeight={700}>
-            原始 JSON
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <Typography variant="subtitle2" fontWeight={700}>
+              原始 JSON
+            </Typography>
+            <Tooltip title="这里是同一条抽样记录的原始 payload，通常比左侧字段摘要更长；左侧展示的是结构化字段，便于快速查看。">
+              <Box sx={{ display: "inline-flex", color: "text.secondary" }}>
+                <Info size={14} />
+              </Box>
+            </Tooltip>
+          </Box>
           <Typography variant="caption" color="text.secondary">
             抽样记录的完整原始字段
           </Typography>
