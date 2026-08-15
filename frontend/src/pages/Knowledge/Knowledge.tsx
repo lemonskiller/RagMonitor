@@ -248,17 +248,17 @@ export default function Knowledge() {
             </Button>
           </Box>
           {error && <Alert severity="warning" sx={{ mx: 2, mb: 2 }}>{error}</Alert>}
-          <Box sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 1000 }}>
+          <Box sx={{ maxHeight: { xs: 540, md: 640 }, overflow: "auto" }}>
+            <Table size="small" stickyHeader sx={{ minWidth: 1080 }}>
               <TableHead>
                 <TableRow>
-                  {["数据源", "类别", "解析器", "记录数", "源文件", "证据", "状态", "更新时间"].map((heading) => (
+                  {["序号", "数据源", "类别", "解析器", "记录数", "源文件", "证据", "状态", "更新时间"].map((heading) => (
                     <TableCell key={heading} sx={{ fontSize: 11, fontWeight: 600 }}>{heading}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {documents.map((document) => (
+                {documents.map((document, index) => (
                   <TableRow
                     key={document.id}
                     hover
@@ -273,6 +273,7 @@ export default function Knowledge() {
                     }}
                     sx={{ cursor: "pointer", "&:focus-visible": { outline: "2px solid", outlineColor: "primary.main", outlineOffset: -2 } }}
                   >
+                    <TableCell sx={{ fontSize: 11, fontFamily: "monospace", width: 72 }}>{index + 1}</TableCell>
                     <TableCell sx={{ fontSize: 11, fontWeight: 600 }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
                         <FileText size={14} />
